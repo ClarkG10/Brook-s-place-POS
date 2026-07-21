@@ -1,7 +1,8 @@
 import { Badge, Button, EmptyState, Input, Label, Skeleton } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Boxes, History, Plus, X } from 'lucide-react';
+import { Boxes, History, Plus, Search, X } from 'lucide-react';
 import { useState } from 'react';
+import { dateTime, qty as fmtQty } from '../lib/format';
 import { api, type Ingredient } from '../lib/api';
 
 const STATUS_DOT: Record<string, string> = {
@@ -17,6 +18,13 @@ export function InventoryPage() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [view, setView] = useState<'stock' | 'logs'>('stock');
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'ingredient' | 'packaging'>('all');
+
+  const q = search.trim().toLowerCase();
+  const filtered = (ingredients ?? []).filter(
+    (i) => (typeFilter === 'all' || i.type === typeFilter) && (!q || i.name.toLowerCase().includes(q)),
+  );
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['inventory'] });
@@ -58,12 +66,26 @@ export function InventoryPage() {
         ))}
       </div>
 
+      {view === 'stock' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-48 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" aria-hidden />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search items…" className="pl-9" aria-label="Search inventory" />
+          </div>
+          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)} className="h-11 cursor-pointer rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--card))] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]" aria-label="Filter by type">
+            <option value="all">All types</option>
+            <option value="ingredient">Ingredients</option>
+            <option value="packaging">Packaging</option>
+          </select>
+        </div>
+      )}
+
       {view === 'logs' ? (
         <LogsTable />
       ) : isPending ? (
         <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-[var(--radius)]" />)}</div>
-      ) : !ingredients?.length ? (
-        <EmptyState icon={Boxes} title="No inventory items" description="Add ingredients and packaging to track stock." />
+      ) : !filtered.length ? (
+        <EmptyState icon={Boxes} title="No items" description={ingredients?.length ? 'None match your filters.' : 'Add ingredients and packaging to track stock.'} />
       ) : (
         <div className="overflow-x-auto rounded-[var(--radius)] border border-[hsl(var(--border))]">
           <table className="w-full min-w-[34rem] text-sm">
@@ -77,7 +99,7 @@ export function InventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[hsl(var(--border))]">
-              {ingredients.map((i) => (
+              {filtered.map((i) => (
                 <tr key={i.id} className="bg-[hsl(var(--card))]">
                   <td className="p-3">
                     <div className="flex items-center gap-2">
@@ -205,14 +227,14 @@ function LogsTable() {
             const before = l.balance_after - l.quantity_delta;
             return (
               <tr key={l.id} className="bg-[hsl(var(--card))]">
-                <td className="whitespace-nowrap p-3 text-xs text-[hsl(var(--muted-foreground))]">{new Date(l.created_at).toLocaleString()}</td>
+                <td className="whitespace-nowrap p-3 text-xs text-[hsl(var(--muted-foreground))]">{dateTime(l.created_at)}</td>
                 <td className="p-3 font-medium">{l.ingredient}</td>
                 <td className="p-3"><Badge variant={variant(l.type)} className="capitalize">{l.type}</Badge></td>
                 <td className="whitespace-nowrap p-3 tabular-nums text-[hsl(var(--muted-foreground))]">
-                  {before.toFixed(1)} → {l.balance_after.toFixed(1)} {l.unit}
+                  {fmtQty(before)} → {fmtQty(l.balance_after, l.unit)}
                 </td>
                 <td className={`p-3 font-semibold tabular-nums ${l.quantity_delta < 0 ? 'text-[hsl(var(--danger))]' : 'text-[hsl(var(--success))]'}`}>
-                  {l.quantity_delta > 0 ? '+' : ''}{l.quantity_delta} {l.unit}
+                  {l.quantity_delta > 0 ? '+' : ''}{fmtQty(l.quantity_delta, l.unit)}
                 </td>
                 <td className="p-3 text-xs text-[hsl(var(--muted-foreground))]">
                   {l.order_number ? `Order ${l.order_number}` : l.note}

@@ -1,16 +1,26 @@
 import { Badge, Button, EmptyState, Input, Label, Skeleton } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Coffee, ImagePlus, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Coffee, ImagePlus, Loader2, Pencil, Plus, Search, Tags, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
-import { api, type AdminOption, type AdminOptionGroup, type AdminProduct } from '../lib/api';
+import { api, type AdminCategory, type AdminOption, type AdminOptionGroup, type AdminProduct } from '../lib/api';
 
 export function ProductsPage() {
   const qc = useQueryClient();
   const { data: products, isPending } = useQuery({ queryKey: ['products'], queryFn: api.products });
+  const { data: categories } = useQuery({ queryKey: ['categories'], queryFn: api.categories });
   const [editing, setEditing] = useState<AdminProduct | 'new' | null>(null);
+  const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState<number | 'all'>('all');
+  const [manageCats, setManageCats] = useState(false);
+
+  const q = search.trim().toLowerCase();
+  const filtered = (products ?? []).filter(
+    (p) => (catFilter === 'all' || p.category_id === catFilter) && (!q || p.name.toLowerCase().includes(q)),
+  );
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['products'] });
+    qc.invalidateQueries({ queryKey: ['categories'] });
     qc.invalidateQueries({ queryKey: ['pos-menu'] });
   };
   const mutate = useMutation({
@@ -21,20 +31,33 @@ export function ProductsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold">Products</h1>
           <p className="text-sm text-[hsl(var(--muted-foreground))]">Recipes, options and images. Availability updates from inventory.</p>
         </div>
-        <Button onClick={() => setEditing('new')}>
-          <Plus className="size-4" aria-hidden /> New
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setManageCats(true)}><Tags className="size-4" aria-hidden /> Categories</Button>
+          <Button onClick={() => setEditing('new')}><Plus className="size-4" aria-hidden /> New</Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-48 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" aria-hidden />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products…" className="pl-9" aria-label="Search products" />
+        </div>
+        <select value={catFilter} onChange={(e) => setCatFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} className="h-11 cursor-pointer rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--card))] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]" aria-label="Filter by category">
+          <option value="all">All categories</option>
+          {categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
       </div>
 
       {isPending ? (
         <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-[var(--radius)]" />)}</div>
-      ) : !products?.length ? (
-        <EmptyState icon={Coffee} title="No products" description="Create your first product." action={<Button onClick={() => setEditing('new')}>New product</Button>} />
+      ) : !filtered.length ? (
+        <EmptyState icon={Coffee} title="No products" description={products?.length ? 'None match your filters.' : 'Create your first product.'} action={<Button onClick={() => setEditing('new')}>New product</Button>} />
       ) : (
         <div className="overflow-x-auto rounded-[var(--radius)] border border-[hsl(var(--border))]">
           <table className="w-full min-w-[40rem] text-sm">
@@ -49,7 +72,7 @@ export function ProductsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[hsl(var(--border))]">
-              {products.map((p) => (
+              {filtered.map((p) => (
                 <tr key={p.id} className="bg-[hsl(var(--card))]">
                   <td className="p-3">
                     <div className="flex items-center gap-2.5">
@@ -92,6 +115,50 @@ export function ProductsPage() {
       )}
 
       {editing && <ProductForm product={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={invalidate} />}
+      {manageCats && <CategoriesManager categories={categories ?? []} onClose={() => setManageCats(false)} onChanged={invalidate} />}
+    </div>
+  );
+}
+
+function CategoriesManager({ categories, onClose, onChanged }: { categories: AdminCategory[]; onClose: () => void; onChanged: () => void }) {
+  const [name, setName] = useState('');
+  const create = useMutation({ mutationFn: () => api.createCategory({ name, is_active: true }), onSuccess: () => { setName(''); onChanged(); } });
+  const update = useMutation({ mutationFn: ({ id, patch }: { id: number; patch: Record<string, unknown> }) => api.updateCategory(id, patch), onSuccess: onChanged });
+  const remove = useMutation({ mutationFn: (id: number) => api.deleteCategory(id), onSuccess: onChanged });
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-[var(--radius)] bg-[hsl(var(--card))] shadow-xl">
+        <div className="flex items-center justify-between border-b border-[hsl(var(--border))] p-5">
+          <h2 className="font-display text-lg font-bold">Categories</h2>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 cursor-pointer place-items-center rounded-full hover:bg-[hsl(var(--muted))]"><X className="size-4" aria-hidden /></button>
+        </div>
+        <div className="max-h-[55vh] space-y-2 overflow-y-auto p-5">
+          {categories.length === 0 && <p className="text-sm text-[hsl(var(--muted-foreground))]">No categories yet.</p>}
+          {categories.map((c) => (
+            <div key={c.id} className="flex items-center gap-2">
+              <Input
+                defaultValue={c.name}
+                onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== c.name) update.mutate({ id: c.id, patch: { name: v, is_active: c.is_active } }); }}
+                className="h-9 flex-1"
+              />
+              <span className="w-14 text-right text-xs text-[hsl(var(--muted-foreground))]">{c.products_count} item{c.products_count === 1 ? '' : 's'}</span>
+              <button
+                type="button"
+                aria-label={`Delete ${c.name}`}
+                onClick={() => confirm(`Delete "${c.name}"? This also deletes its ${c.products_count} product(s).`) && remove.mutate(c.id)}
+                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--danger))]/10 hover:text-[hsl(var(--danger))]"
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 border-t border-[hsl(var(--border))] p-5">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="New category name" className="flex-1" />
+          <Button disabled={!name.trim() || create.isPending} onClick={() => create.mutate()}>Add</Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -105,7 +172,7 @@ function fullPatch(p: AdminProduct, override: Record<string, unknown>): Record<s
 }
 
 function emptyOption(): AdminOption {
-  return { name: '', price_delta: 0, is_default: false, consumes_ingredient_id: null, consume_quantity: 0 };
+  return { name: '', price_delta: 0, is_default: false, consumes_ingredient_id: null, consume_quantity: 0, replaces_ingredient_id: null };
 }
 
 function ProductForm({ product, onClose, onSaved }: { product: AdminProduct | null; onClose: () => void; onSaved: () => void }) {
@@ -196,9 +263,15 @@ function ProductForm({ product, onClose, onSaved }: { product: AdminProduct | nu
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="p-desc">Description</Label>
-          <Input id="p-desc" value={form.description ?? ''} onChange={(e) => set('description', e.target.value)} />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="p-desc">Description</Label>
+            <Input id="p-desc" value={form.description ?? ''} onChange={(e) => set('description', e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="p-prep">Prep time (minutes)</Label>
+            <Input id="p-prep" type="number" min={0} max={120} value={form.prep_time_minutes} onChange={(e) => set('prep_time_minutes', Number(e.target.value))} />
+          </div>
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
           {(['is_active', 'is_popular', 'is_new', 'manual_sold_out'] as const).map((k) => (
@@ -296,6 +369,10 @@ function OptionsEditor({ groups, setGroups, ingredients }: { groups: AdminOption
                 {o.consumes_ingredient_id && (
                   <Input type="number" min={0} step="0.001" value={o.consume_quantity} onChange={(e) => updateOpt(gi, oi, { consume_quantity: Number(e.target.value) })} className="h-8 w-20" title="Quantity consumed" />
                 )}
+                <select value={o.replaces_ingredient_id ?? ''} onChange={(e) => updateOpt(gi, oi, { replaces_ingredient_id: e.target.value ? Number(e.target.value) : null })} className="h-8 cursor-pointer rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--card))] px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]" title="Replaces a base recipe ingredient">
+                  <option value="">replaces nothing</option>
+                  {ingredients.map((ing) => <option key={ing.id} value={ing.id}>swap out {ing.name}</option>)}
+                </select>
                 <button type="button" aria-label="Remove option" onClick={() => update(gi, { options: g.options.filter((_, i) => i !== oi) })} className="grid size-7 cursor-pointer place-items-center rounded-md text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--danger))]"><X className="size-3.5" aria-hidden /></button>
               </div>
             ))}

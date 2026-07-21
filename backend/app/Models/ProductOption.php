@@ -9,7 +9,7 @@ class ProductOption extends Model
 {
     protected $fillable = [
         'option_group_id', 'name', 'price_delta', 'is_default', 'sort_order',
-        'consumes_ingredient_id', 'consume_quantity',
+        'consumes_ingredient_id', 'consume_quantity', 'replaces_ingredient_id',
     ];
 
     protected $casts = [

@@ -65,7 +65,7 @@ export function DashboardPage() {
           <h2 className="mb-4 font-display text-sm font-bold">Revenue · Last 7 days</h2>
           <div className="flex h-40 items-end gap-2">
             {data?.revenue_last_7_days.map((d) => (
-              <div key={d.date} className="flex flex-1 flex-col items-center gap-1.5">
+              <div key={d.date} className="flex h-full flex-1 flex-col items-center gap-1.5">
                 <div className="flex w-full flex-1 items-end">
                   <div
                     className="w-full rounded-t-md bg-[hsl(var(--primary))] transition-all"

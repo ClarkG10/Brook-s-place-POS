@@ -140,10 +140,25 @@ class InventoryService
                 if (! $item->product_id) {
                     continue;
                 }
+                $options = (array) $item->options;
+
+                // Base-recipe ingredients replaced by a chosen option are skipped.
+                $replaced = [];
+                foreach ($options as $opt) {
+                    if (! empty($opt['replaces_ingredient_id'])) {
+                        $replaced[(int) $opt['replaces_ingredient_id']] = true;
+                    }
+                }
+
                 foreach (RecipeItem::where('product_id', $item->product_id)->get() as $ri) {
+                    if (isset($replaced[$ri->ingredient_id])) {
+                        continue;
+                    }
                     $consumption[$ri->ingredient_id] = ($consumption[$ri->ingredient_id] ?? 0) + (float) $ri->quantity * $item->quantity;
                 }
-                foreach ((array) $item->options as $opt) {
+
+                // Add-on / replacement option consumption.
+                foreach ($options as $opt) {
                     if (! empty($opt['consumes_ingredient_id']) && ! empty($opt['consume_quantity'])) {
                         $id = (int) $opt['consumes_ingredient_id'];
                         $consumption[$id] = ($consumption[$id] ?? 0) + (float) $opt['consume_quantity'] * $item->quantity;

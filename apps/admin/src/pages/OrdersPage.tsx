@@ -1,8 +1,9 @@
-import { Badge, Button, EmptyState, Spinner } from '@brooks/ui';
+import { Badge, Button, EmptyState, Input, Spinner } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardList, LayoutGrid, Printer, Rows3, X } from 'lucide-react';
+import { ClipboardList, LayoutGrid, Printer, Rows3, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import { ReceiptModal } from '../components/ReceiptModal';
+import { dateTime } from '../lib/format';
 import { api, type Order } from '../lib/api';
 
 const FILTERS = [
@@ -33,6 +34,7 @@ export function OrdersPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>(FILTERS[0].key);
   const [layout, setLayout] = useState<'cards' | 'table'>('cards');
+  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Order | null>(null);
   const [receipt, setReceipt] = useState<Order | null>(null);
 
@@ -51,7 +53,10 @@ export function OrdersPage() {
     },
   });
 
-  const orders = data?.data ?? [];
+  const s = search.trim().toLowerCase();
+  const orders = (data?.data ?? []).filter(
+    (o) => !s || o.order_number.toLowerCase().includes(s) || (o.customer_name?.toLowerCase().includes(s) ?? false),
+  );
   const sym = settings?.currency_symbol ?? '₱';
   const money = (n: number) => `${sym}${n.toFixed(2)}`;
 
@@ -84,19 +89,25 @@ export function OrdersPage() {
         </div>
       </div>
 
-      <div className="no-scrollbar flex gap-2 overflow-x-auto">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setFilter(f.key)}
-            className={`shrink-0 cursor-pointer rounded-full px-4 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
-              filter === f.key ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] hover:brightness-95'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="no-scrollbar flex gap-2 overflow-x-auto">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              className={`shrink-0 cursor-pointer rounded-full px-4 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
+                filter === f.key ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] hover:brightness-95'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative ml-auto min-w-52 flex-1 sm:max-w-xs sm:flex-none">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" aria-hidden />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search order # or name…" className="pl-9" aria-label="Search orders" />
+        </div>
       </div>
 
       {isPending ? (
@@ -241,7 +252,7 @@ function OrderDetailModal({
               <Badge variant={STATUS_VARIANT[order.status]} className="capitalize">{order.status}</Badge>
             </div>
             <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">
-              {order.source.toUpperCase()} · {new Date(order.placed_at ?? order.created_at).toLocaleString()}
+              {order.source.toUpperCase()} · {dateTime(order.placed_at ?? order.created_at)}
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 cursor-pointer place-items-center rounded-full hover:bg-[hsl(var(--muted))]"><X className="size-4" aria-hidden /></button>
@@ -252,7 +263,7 @@ function OrderDetailModal({
             {row('Where', order.table_number ? `Table ${order.table_number}` : 'Counter')}
             {order.customer_name && row('Customer', order.customer_name)}
             {order.payment_method && row('Payment', order.payment_method.toUpperCase() + (order.is_paid ? ' · paid' : ''))}
-            {order.completed_at && row('Completed', new Date(order.completed_at).toLocaleString())}
+            {order.completed_at && row('Completed', dateTime(order.completed_at))}
             {order.cashier && row('Cashier', order.cashier)}
           </div>
 

@@ -1,6 +1,6 @@
 import { applyTheme } from '@brooks/ui';
 import { useQuery } from '@tanstack/react-query';
-import { Boxes, ClipboardList, Coffee, LayoutDashboard, LogOut, Settings as SettingsIcon, ShoppingCart, UtensilsCrossed } from 'lucide-react';
+import { BarChart3, Boxes, ClipboardList, Coffee, LayoutDashboard, LogOut, Settings as SettingsIcon, ShoppingCart, UtensilsCrossed } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
@@ -12,6 +12,7 @@ const NAV = [
   { to: '/orders', label: 'Orders', icon: ClipboardList, end: false },
   { to: '/products', label: 'Products', icon: UtensilsCrossed, end: false },
   { to: '/inventory', label: 'Inventory', icon: Boxes, end: false },
+  { to: '/sales', label: 'Sales', icon: BarChart3, end: false },
   { to: '/settings', label: 'Settings', icon: SettingsIcon, end: false },
 ];
 
@@ -56,9 +57,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Sidebar (desktop) */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 md:flex">
         <div className="mb-6 flex items-center gap-2.5 px-2">
-          <div className="grid size-9 place-items-center rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
-            <Coffee className="size-5" aria-hidden />
-          </div>
+          {settings.data?.logo_url ? (
+            <img src={settings.data.logo_url} alt="" className="size-9 rounded-lg object-cover" />
+          ) : (
+            <div className="grid size-9 place-items-center rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
+              <Coffee className="size-5" aria-hidden />
+            </div>
+          )}
           <span className="truncate font-display text-sm font-bold text-[hsl(var(--foreground))]">{shopName}</span>
         </div>
         <NavLinks />
@@ -82,14 +87,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <main className="flex-1 p-4 pb-24 md:p-8">{children}</main>
 
         {/* Bottom nav (mobile) */}
-        <nav className="fixed inset-x-0 bottom-0 z-20 flex justify-around border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] py-2 md:hidden">
+        <nav className="no-scrollbar fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] py-2 md:hidden">
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
               className={({ isActive }) =>
-                `flex flex-1 cursor-pointer flex-col items-center gap-1 py-1 text-xs ${
+                `flex min-w-[4.25rem] shrink-0 grow cursor-pointer flex-col items-center gap-1 py-1 text-xs ${
                   isActive ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'
                 }`
               }

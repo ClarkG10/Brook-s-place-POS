@@ -39,14 +39,17 @@ export function MenuPage() {
   return (
     <div className="flex min-h-full flex-col pb-28">
       {/* Greeting hero */}
-      <header className="relative overflow-hidden px-5 pb-4 pt-8">
+      <header className="relative overflow-hidden px-4 pb-4 pt-8">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10"
-          style={{ background: 'radial-gradient(120% 90% at 15% 0%, hsl(var(--accent) / 0.16), transparent 55%)' }}
+          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64"
+          style={{ background: 'radial-gradient(120% 90% at 50% 0%, hsl(var(--accent) / 0.16), transparent 60%)' }}
         />
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">{settings?.shop_name ?? "Brook's Place"}</p>
+          <div className="flex items-center gap-2">
+            {settings?.logo_url && <img src={settings.logo_url} alt="" className="size-9 rounded-xl object-cover" />}
+            <p className="text-base font-bold text-[hsl(var(--foreground))]">{settings?.shop_name ?? "Brook's Place"}</p>
+          </div>
           {table && (
             <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[hsl(var(--card))] px-3 py-1.5 text-xs font-bold shadow-sm">
               <MapPin className="size-3.5 text-[hsl(var(--primary))]" aria-hidden /> Table {table}
@@ -107,10 +110,10 @@ export function MenuPage() {
                 <h2 className="mb-3 flex items-center gap-1.5 font-display text-2xl font-bold">
                   <Sparkles className="size-5 text-[hsl(var(--accent))]" aria-hidden /> Popular right now
                 </h2>
-                <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
+                <div className="no-scrollbar -mx-4 flex snap-x items-stretch gap-4 overflow-x-auto px-4 py-2">
                   {popular.map((p) => (
-                    <div key={p.id} className="w-40 shrink-0 snap-start">
-                      <ProductCard product={p} onSelect={setCustomizing} />
+                    <div key={p.id} className="w-56 shrink-0 snap-start sm:w-60">
+                      <ProductCard product={p} onSelect={setCustomizing} flat />
                     </div>
                   ))}
                 </div>

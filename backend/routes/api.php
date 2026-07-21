@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\ProductController;
+use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\UploadController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
@@ -41,6 +42,10 @@ Route::middleware('auth:sanctum')->group(function () {
 */
 Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::get('dashboard', [DashboardController::class, 'summary']);
+
+    // Sales reports
+    Route::get('reports/sales', [ReportController::class, 'sales']);
+    Route::get('reports/sales/export', [ReportController::class, 'export']);
 
     Route::get('settings', [SettingsController::class, 'show']);
     Route::put('settings', [SettingsController::class, 'update']);

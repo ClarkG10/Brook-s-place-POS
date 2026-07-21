@@ -1,9 +1,9 @@
 import { Button, EmptyState, Input, Label, Skeleton } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Coffee, Minus, Plus, Trash2 } from 'lucide-react';
+import { Coffee, Minus, Plus, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ReceiptModal } from '../components/ReceiptModal';
-import { api, type MenuProduct, type Order, type PosOrderPayload } from '../lib/api';
+import { api, type MenuOption, type MenuOptionGroup, type MenuProduct, type Order, type PosOrderPayload } from '../lib/api';
 
 interface Line {
   key: string;
@@ -45,6 +45,7 @@ export function PosPage() {
   const [payment, setPayment] = useState<(typeof PAYMENTS)[number]>('cash');
   const [tendered, setTendered] = useState('');
   const [receipt, setReceipt] = useState<Order | null>(null);
+  const [customizing, setCustomizing] = useState<MenuProduct | null>(null);
 
   const sym = settings?.currency_symbol ?? '₱';
   const money = (n: number) => `${sym}${n.toFixed(2)}`;
@@ -58,18 +59,24 @@ export function PosPage() {
   const total = Math.max(0, subtotal - discount);
   const change = payment === 'cash' && tendered ? Number(tendered) - total : null;
 
-  function addProduct(product: MenuProduct) {
-    if (product.is_sold_out) return;
-    const d = defaultsFor(product);
-    const key = `${product.id}:${d.ids.join(',')}`;
+  function pushLine(product: MenuProduct, ids: number[], names: string[], unitPrice: number) {
+    const key = `${product.id}:${[...ids].sort((a, b) => a - b).join(',')}`;
     setLines((prev) => {
       const existing = prev.find((l) => l.key === key);
       if (existing) return prev.map((l) => (l.key === key ? { ...l, quantity: l.quantity + 1 } : l));
-      return [
-        ...prev,
-        { key, product, quantity: 1, optionIds: d.ids, optionNames: d.names, unitPrice: product.base_price + d.delta },
-      ];
+      return [...prev, { key, product, quantity: 1, optionIds: ids, optionNames: names, unitPrice }];
     });
+  }
+
+  function addProduct(product: MenuProduct) {
+    if (product.is_sold_out) return;
+    // Products with options open the customize sheet; simple items are one tap.
+    if (product.option_groups.length > 0) {
+      setCustomizing(product);
+      return;
+    }
+    const d = defaultsFor(product);
+    pushLine(product, d.ids, d.names, product.base_price + d.delta);
   }
 
   const setQty = (key: string, q: number) =>
@@ -136,10 +143,22 @@ export function PosPage() {
                   type="button"
                   disabled={p.is_sold_out}
                   onClick={() => addProduct(p)}
-                  className="flex cursor-pointer flex-col justify-between gap-2 rounded-[var(--radius)] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 text-left transition-[box-shadow,transform] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex cursor-pointer flex-col gap-2 rounded-[var(--radius)] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-2 text-left transition-[box-shadow,transform] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <span className="font-display text-sm font-semibold leading-tight">{p.name}</span>
-                  <span className="font-display text-sm font-bold text-[hsl(var(--primary))]">{money(p.base_price)}</span>
+                  <div className="relative aspect-square w-full overflow-hidden rounded-md">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt="" loading="lazy" className="size-full object-cover" />
+                    ) : (
+                      <div className="grid size-full place-items-center" style={{ background: 'linear-gradient(135deg, hsl(var(--primary) / 0.14), hsl(var(--accent) / 0.12))' }}>
+                        <Coffee className="size-6 text-[hsl(var(--primary))]/50" aria-hidden />
+                      </div>
+                    )}
+                    {p.is_sold_out && <div className="absolute inset-0 grid place-items-center bg-black/45 text-xs font-bold text-white">Sold out</div>}
+                  </div>
+                  <div className="px-1">
+                    <span className="block text-sm font-semibold leading-tight">{p.name}</span>
+                    <span className="font-display text-sm font-bold text-[hsl(var(--primary))]">{money(p.base_price)}</span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -234,7 +253,110 @@ export function PosPage() {
         </div>
       </div>
 
+      {customizing && (
+        <PosCustomize
+          product={customizing}
+          money={money}
+          onClose={() => setCustomizing(null)}
+          onAdd={(ids, names, unitPrice) => {
+            pushLine(customizing, ids, names, unitPrice);
+            setCustomizing(null);
+          }}
+        />
+      )}
       {receipt && settings && <ReceiptModal order={receipt} settings={settings} onClose={() => setReceipt(null)} />}
+    </div>
+  );
+}
+
+function PosCustomize({
+  product,
+  money,
+  onClose,
+  onAdd,
+}: {
+  product: MenuProduct;
+  money: (n: number) => string;
+  onClose: () => void;
+  onAdd: (ids: number[], names: string[], unitPrice: number) => void;
+}) {
+  const [selection, setSelection] = useState<Record<number, MenuOption[]>>(() => {
+    const sel: Record<number, MenuOption[]> = {};
+    for (const g of product.option_groups) {
+      const defaults = g.options.filter((o) => o.is_default);
+      sel[g.id] = defaults.length ? defaults.slice(0, Math.max(1, g.max_select)) : [];
+    }
+    return sel;
+  });
+  const [showErrors, setShowErrors] = useState(false);
+
+  const chosen = Object.values(selection).flat();
+  const unitPrice = chosen.reduce((s, o) => s + o.price_delta, product.base_price);
+  const missing = product.option_groups.filter((g) => (g.is_required || g.min_select > 0) && (selection[g.id]?.length ?? 0) < Math.max(1, g.min_select));
+
+  function toggle(group: MenuOptionGroup, option: MenuOption) {
+    setSelection((prev) => {
+      const cur = prev[group.id] ?? [];
+      if (group.max_select <= 1) return { ...prev, [group.id]: [option] };
+      const exists = cur.some((o) => o.id === option.id);
+      if (exists) return { ...prev, [group.id]: cur.filter((o) => o.id !== option.id) };
+      if (cur.length >= group.max_select) return prev;
+      return { ...prev, [group.id]: [...cur, option] };
+    });
+  }
+
+  function add() {
+    if (missing.length) { setShowErrors(true); return; }
+    onAdd(chosen.map((o) => o.id), chosen.map((o) => o.name), unitPrice);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-4">
+      <div className="my-8 flex max-h-[85vh] w-full max-w-md flex-col rounded-[var(--radius)] bg-[hsl(var(--card))] shadow-xl">
+        <div className="flex items-center justify-between border-b border-[hsl(var(--border))] p-5">
+          <h2 className="font-display text-lg font-bold">{product.name}</h2>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 cursor-pointer place-items-center rounded-full hover:bg-[hsl(var(--muted))]"><X className="size-4" aria-hidden /></button>
+        </div>
+
+        <div className="flex-1 space-y-5 overflow-y-auto p-5">
+          {product.option_groups.map((g) => {
+            const invalid = showErrors && missing.some((m) => m.id === g.id);
+            return (
+              <fieldset key={g.id}>
+                <legend className="mb-2 text-sm font-bold">
+                  {g.name}
+                  {(g.is_required || g.min_select > 0) && <span className="ml-1 text-[hsl(var(--danger))]">*</span>}
+                  {g.max_select > 1 && <span className="ml-1 text-xs font-normal text-[hsl(var(--muted-foreground))]">(up to {g.max_select})</span>}
+                </legend>
+                {invalid && <p className="mb-2 text-xs text-[hsl(var(--danger))]">Please choose an option.</p>}
+                <div className="grid grid-cols-2 gap-2">
+                  {g.options.map((o) => {
+                    const active = (selection[g.id] ?? []).some((s) => s.id === o.id);
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => toggle(g, o)}
+                        className={`flex items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
+                          active ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))]/10 font-semibold' : 'cursor-pointer border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]'
+                        }`}
+                      >
+                        <span>{o.name}</span>
+                        {o.price_delta !== 0 && <span className="text-xs text-[hsl(var(--muted-foreground))]">+{money(o.price_delta).replace(/^./, '')}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            );
+          })}
+        </div>
+
+        <div className="border-t border-[hsl(var(--border))] p-5">
+          <Button size="lg" className="w-full" onClick={add}>Add · {money(unitPrice)}</Button>
+        </div>
+      </div>
     </div>
   );
 }

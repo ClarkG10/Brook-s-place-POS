@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { PosPage } from './pages/PosPage';
 import { ProductsPage } from './pages/ProductsPage';
+import { SalesPage } from './pages/SalesPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 export function App() {
@@ -28,6 +29,7 @@ export function App() {
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
+        <Route path="/sales" element={<SalesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

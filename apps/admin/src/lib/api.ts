@@ -105,6 +105,7 @@ export interface AdminOption {
   is_default: boolean;
   consumes_ingredient_id: number | null;
   consume_quantity: number;
+  replaces_ingredient_id: number | null;
 }
 export interface AdminOptionGroup {
   id?: number;
@@ -171,6 +172,15 @@ export interface StockLog {
   created_at: string;
 }
 
+export interface SalesReport {
+  range: { from: string; to: string };
+  summary: { gross_sales: number; orders: number; avg_order_value: number; items_sold: number; discount: number; tax: number };
+  by_day: { date: string; total: number; orders: number }[];
+  by_payment: { method: string; count: number; total: number }[];
+  by_hour: { hour: number; orders: number; total: number }[];
+  top_products: { name: string; quantity: number; revenue: number }[];
+}
+
 export interface MenuOption {
   id: number;
   name: string;
@@ -190,6 +200,7 @@ export interface MenuProduct {
   category_id: number;
   name: string;
   base_price: number;
+  image_url: string | null;
   is_sold_out: boolean;
   option_groups: MenuOptionGroup[];
 }
@@ -246,6 +257,9 @@ export const api = {
 
   // Categories
   categories: () => request<{ data: AdminCategory[] }>('/admin/categories').then((r) => r.data),
+  createCategory: (c: Record<string, unknown>) => request<AdminCategory>('/admin/categories', { method: 'POST', body: JSON.stringify(c) }),
+  updateCategory: (id: number, c: Record<string, unknown>) => request<AdminCategory>(`/admin/categories/${id}`, { method: 'PUT', body: JSON.stringify(c) }),
+  deleteCategory: (id: number) => request<void>(`/admin/categories/${id}`, { method: 'DELETE' }),
 
   // Inventory
   inventory: () => request<{ ingredients: Ingredient[] }>('/admin/inventory').then((r) => r.ingredients),
@@ -272,5 +286,32 @@ export const api = {
     });
     if (!res.ok) throw new ApiError(res.status, 'Upload failed');
     return res.json();
+  },
+
+  // Reports
+  salesReport: (from?: string, to?: string) => {
+    const qs = new URLSearchParams();
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    return request<SalesReport>(`/admin/reports/sales${qs.toString() ? `?${qs}` : ''}`);
+  },
+  exportSales: async (from?: string, to?: string): Promise<void> => {
+    const token = getToken();
+    const qs = new URLSearchParams();
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    const res = await fetch(`${BASE}/api/admin/reports/sales/export?${qs}`, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    if (!res.ok) throw new ApiError(res.status, 'Export failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sales_${from ?? 'all'}_${to ?? 'now'}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   },
 };

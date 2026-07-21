@@ -68,6 +68,7 @@ class OrderService
                         'price_delta' => (float) $option->price_delta,
                         'consumes_ingredient_id' => $option->consumes_ingredient_id,
                         'consume_quantity' => (float) $option->consume_quantity,
+                        'replaces_ingredient_id' => $option->replaces_ingredient_id,
                     ];
                 }
 

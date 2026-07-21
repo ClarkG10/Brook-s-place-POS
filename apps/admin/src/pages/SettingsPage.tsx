@@ -1,6 +1,6 @@
 import { applyTheme, Button, Card, Input, Label, Skeleton } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Store } from 'lucide-react';
+import { Check, ImagePlus, Loader2, Store } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api, ApiError, type Palette } from '../lib/api';
 
@@ -11,6 +11,7 @@ export function SettingsPage() {
   const [form, setForm] = useState({
     shop_name: '',
     tagline: '',
+    logo_url: '',
     currency_symbol: '₱',
     currency_code: 'PHP',
     tax_rate: 0,
@@ -22,12 +23,14 @@ export function SettingsPage() {
     admin_mode: 'light',
   });
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!settings) return;
     setForm({
       shop_name: settings.shop_name,
       tagline: settings.tagline ?? '',
+      logo_url: settings.logo_url ?? '',
       currency_symbol: settings.currency_symbol,
       currency_code: settings.currency_code,
       tax_rate: settings.tax_rate,
@@ -63,6 +66,18 @@ export function SettingsPage() {
   const err = save.error instanceof ApiError ? save.error.message : null;
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
+  async function onLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { url } = await api.uploadImage(file);
+      set('logo_url', url);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <form
       className="max-w-3xl space-y-6"
@@ -81,6 +96,32 @@ export function SettingsPage() {
         <h2 className="flex items-center gap-2 font-display text-sm font-bold">
           <Store className="size-4 text-[hsl(var(--primary))]" aria-hidden /> Brand
         </h2>
+
+        <div className="flex items-center gap-4">
+          <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-[var(--radius)] border border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+            {uploading ? (
+              <Loader2 className="size-5 animate-spin text-[hsl(var(--muted-foreground))]" aria-hidden />
+            ) : form.logo_url ? (
+              <img src={form.logo_url} alt="Shop logo" className="size-full object-cover" />
+            ) : (
+              <ImagePlus className="size-6 text-[hsl(var(--muted-foreground))]" aria-hidden />
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-medium">Logo</p>
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">Shown in the admin nav and on the customer app.</p>
+            <div className="mt-1.5 flex gap-3 text-xs font-semibold">
+              <label className="cursor-pointer text-[hsl(var(--primary))]">
+                {form.logo_url ? 'Change' : 'Upload'}
+                <input type="file" accept="image/*" className="sr-only" onChange={onLogoFile} />
+              </label>
+              {form.logo_url && (
+                <button type="button" onClick={() => set('logo_url', '')} className="cursor-pointer text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--danger))]">Remove</button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="shop_name">Shop name</Label>

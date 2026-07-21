@@ -1,5 +1,6 @@
 import { Button } from '@brooks/ui';
 import { Printer, X } from 'lucide-react';
+import { dateTime } from '../lib/format';
 import type { AdminSettings, Order } from '../lib/api';
 
 /** Print-friendly receipt. The @media print rules in index.css isolate `.receipt-print`. */
@@ -14,7 +15,6 @@ export function ReceiptModal({
 }) {
   const sym = settings.currency_symbol;
   const money = (n: number) => `${sym}${n.toFixed(2)}`;
-  const when = order.placed_at ?? order.created_at;
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
@@ -49,7 +49,7 @@ export function ReceiptModal({
             </div>
             <div className="flex justify-between">
               <span>Date</span>
-              <span>{new Date(when).toLocaleString()}</span>
+              <span>{dateTime(order.placed_at ?? order.created_at)}</span>
             </div>
             {order.cashier && (
               <div className="flex justify-between">

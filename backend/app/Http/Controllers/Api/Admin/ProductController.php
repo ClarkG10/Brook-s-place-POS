@@ -93,6 +93,7 @@ class ProductController extends Controller
             'option_groups.*.options.*.is_default' => ['boolean'],
             'option_groups.*.options.*.consumes_ingredient_id' => ['nullable', 'exists:ingredients,id'],
             'option_groups.*.options.*.consume_quantity' => ['nullable', 'numeric', 'min:0'],
+            'option_groups.*.options.*.replaces_ingredient_id' => ['nullable', 'exists:ingredients,id'],
         ]);
     }
 
@@ -118,6 +119,7 @@ class ProductController extends Controller
                     'sort_order' => $oi,
                     'consumes_ingredient_id' => $o['consumes_ingredient_id'] ?? null,
                     'consume_quantity' => $o['consume_quantity'] ?? 0,
+                    'replaces_ingredient_id' => $o['replaces_ingredient_id'] ?? null,
                 ]);
             }
         }
@@ -177,6 +179,7 @@ class ProductController extends Controller
                     'is_default' => $o->is_default,
                     'consumes_ingredient_id' => $o->consumes_ingredient_id,
                     'consume_quantity' => (float) $o->consume_quantity,
+                    'replaces_ingredient_id' => $o->replaces_ingredient_id,
                 ]),
             ]),
         ];
