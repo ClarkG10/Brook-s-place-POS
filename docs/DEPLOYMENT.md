@@ -120,7 +120,7 @@ Owners log into the admin app with **either** their username or email. Roles: `o
 
 > Avoid `php artisan tinker` + `User::create([... 'password' => bcrypt(...)])` — the model casts `password => 'hashed'`, so it **auto-hashes**; wrapping in `bcrypt()` double-hashes it and login silently fails. Pass the plaintext password (the command above does this correctly).
 
-Optionally seed a starter menu/inventory: `php artisan db:seed --class=Database\\Seeders\\MenuSeeder` (and `InventorySeeder`), or just build it in the admin UI.
+**Starter catalog** (inventory + full menu with recipes & customization options) is seeded **automatically** by a data migration on the first `migrate` — but only when the catalog is empty, so it never overwrites a live menu or edits you make in the admin UI (and it's skipped entirely in the test env). To re-seed or refresh it later: `php artisan app:seed-starter` (add `--if-empty` to make it a no-op when products already exist).
 
 ---
 
