@@ -65,4 +65,41 @@ class InventoryController extends Controller
             'status' => InventoryService::statusColor($ingredient),
         ]);
     }
+
+    public function store(Request $request): JsonResponse
+    {
+        $ingredient = Ingredient::create($this->validated($request));
+        $this->inventory->flush();
+
+        return response()->json($ingredient, 201);
+    }
+
+    public function update(Request $request, Ingredient $ingredient): JsonResponse
+    {
+        $ingredient->update($this->validated($request));
+        $this->inventory->flush();
+
+        return response()->json($ingredient);
+    }
+
+    public function destroy(Ingredient $ingredient): JsonResponse
+    {
+        $ingredient->delete();
+        $this->inventory->flush();
+
+        return response()->json(null, 204);
+    }
+
+    private function validated(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'unit' => ['required', 'string', 'max:16'],
+            'type' => ['required', 'in:ingredient,packaging'],
+            'stock_quantity' => ['required', 'numeric', 'min:0'],
+            'low_stock_threshold' => ['required', 'numeric', 'min:0'],
+            'cost_per_unit' => ['nullable', 'numeric', 'min:0'],
+            'is_active' => ['boolean'],
+        ]);
+    }
 }

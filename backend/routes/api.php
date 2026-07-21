@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\CategoryController;
+use App\Http\Controllers\Api\Admin\ProductController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InventoryController;
@@ -47,7 +49,22 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::get('orders/{order}', [OrderController::class, 'show']);
     Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus']);
 
+    // Menu management
+    Route::get('products', [ProductController::class, 'index']);
+    Route::post('products', [ProductController::class, 'store']);
+    Route::put('products/{product}', [ProductController::class, 'update']);
+    Route::delete('products/{product}', [ProductController::class, 'destroy']);
+
+    Route::get('categories', [CategoryController::class, 'index']);
+    Route::post('categories', [CategoryController::class, 'store']);
+    Route::put('categories/{category}', [CategoryController::class, 'update']);
+    Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
+
+    // Inventory
     Route::get('inventory', [InventoryController::class, 'index']);
     Route::get('inventory/low-stock', [InventoryController::class, 'lowStock']);
+    Route::post('inventory', [InventoryController::class, 'store']);
     Route::post('inventory/{ingredient}/restock', [InventoryController::class, 'restock']);
+    Route::put('inventory/{ingredient}', [InventoryController::class, 'update']);
+    Route::delete('inventory/{ingredient}', [InventoryController::class, 'destroy']);
 });

@@ -72,10 +72,16 @@ export interface Order {
   customer_name: string | null;
   notes: string | null;
   subtotal: number;
+  discount: number;
+  tax: number;
+  service_charge: number;
   total: number;
   payment_method: string | null;
+  payment_reference: string | null;
   is_paid: boolean;
+  cashier: string | null;
   placed_at: string | null;
+  completed_at: string | null;
   created_at: string;
   items: OrderItem[];
 }
@@ -90,6 +96,84 @@ export interface DashboardSummary {
   top_products: { name: string; quantity: number }[];
   revenue_last_7_days: { date: string; total: number }[];
   recent_orders: { data: Order[] };
+}
+
+export interface AdminProduct {
+  id: number;
+  category_id: number;
+  category: string | null;
+  name: string;
+  slug: string;
+  description: string | null;
+  base_price: number;
+  prep_time_minutes: number;
+  is_active: boolean;
+  is_popular: boolean;
+  is_new: boolean;
+  manual_sold_out: boolean;
+  max_producible: number | null;
+  is_sold_out: boolean;
+  limiting_ingredient: string | null;
+  recipe: { ingredient_id: number; ingredient: string | null; unit: string | null; quantity: number }[];
+}
+
+export interface AdminCategory {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string | null;
+  color: string | null;
+  sort_order: number;
+  is_active: boolean;
+  products_count: number;
+}
+
+export interface Ingredient {
+  id: number;
+  name: string;
+  unit: string;
+  type: 'ingredient' | 'packaging';
+  stock_quantity: number;
+  low_stock_threshold: number;
+  cost_per_unit: number;
+  status: 'green' | 'yellow' | 'orange' | 'red';
+}
+
+export interface MenuOption {
+  id: number;
+  name: string;
+  price_delta: number;
+  is_default: boolean;
+}
+export interface MenuOptionGroup {
+  id: number;
+  name: string;
+  min_select: number;
+  max_select: number;
+  is_required: boolean;
+  options: MenuOption[];
+}
+export interface MenuProduct {
+  id: number;
+  category_id: number;
+  name: string;
+  base_price: number;
+  is_sold_out: boolean;
+  option_groups: MenuOptionGroup[];
+}
+export interface MenuCategory {
+  id: number;
+  name: string;
+  products: MenuProduct[];
+}
+
+export interface PosOrderPayload {
+  table_number?: string | null;
+  customer_name?: string | null;
+  notes?: string | null;
+  discount?: number;
+  payment_method?: string | null;
+  items: { product_id: number; quantity: number; notes?: string | null; option_ids: number[] }[];
 }
 
 export const api = {
@@ -112,5 +196,34 @@ export const api = {
     request<{ data: Order }>(`/admin/orders/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
+    }),
+  order: (id: number) => request<{ data: Order }>(`/admin/orders/${id}`).then((r) => r.data),
+
+  // POS
+  menu: () => request<{ categories: MenuCategory[] }>('/public/menu').then((r) => r.categories),
+  createOrder: (payload: PosOrderPayload) =>
+    request<{ data: Order }>('/admin/orders', { method: 'POST', body: JSON.stringify(payload) }).then((r) => r.data),
+
+  // Products
+  products: () => request<{ data: AdminProduct[] }>('/admin/products').then((r) => r.data),
+  createProduct: (p: Record<string, unknown>) =>
+    request<AdminProduct>('/admin/products', { method: 'POST', body: JSON.stringify(p) }),
+  updateProduct: (id: number, p: Record<string, unknown>) =>
+    request<AdminProduct>(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(p) }),
+  deleteProduct: (id: number) => request<void>(`/admin/products/${id}`, { method: 'DELETE' }),
+
+  // Categories
+  categories: () => request<{ data: AdminCategory[] }>('/admin/categories').then((r) => r.data),
+
+  // Inventory
+  inventory: () => request<{ ingredients: Ingredient[] }>('/admin/inventory').then((r) => r.ingredients),
+  createIngredient: (i: Record<string, unknown>) =>
+    request<Ingredient>('/admin/inventory', { method: 'POST', body: JSON.stringify(i) }),
+  updateIngredient: (id: number, i: Record<string, unknown>) =>
+    request<Ingredient>(`/admin/inventory/${id}`, { method: 'PUT', body: JSON.stringify(i) }),
+  restockIngredient: (id: number, quantity: number, mode: 'add' | 'set' = 'add') =>
+    request<{ id: number; stock_quantity: number; status: string }>(`/admin/inventory/${id}/restock`, {
+      method: 'POST',
+      body: JSON.stringify({ quantity, mode }),
     }),
 };

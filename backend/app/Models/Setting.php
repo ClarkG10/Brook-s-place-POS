@@ -3,12 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Cache;
 
 class Setting extends Model
 {
-    public const CACHE_KEY = 'store.settings';
-
     protected $fillable = [
         'shop_name', 'tagline', 'logo_url',
         'currency_code', 'currency_symbol', 'tax_rate', 'tax_inclusive', 'service_charge_rate',
@@ -24,16 +21,19 @@ class Setting extends Model
         'admin_theme' => 'array',
     ];
 
-    protected static function booted(): void
-    {
-        // Keep the cached singleton fresh whenever settings change.
-        static::saved(fn () => Cache::forget(self::CACHE_KEY));
-        static::deleted(fn () => Cache::forget(self::CACHE_KEY));
-    }
+    /** Per-request memoized singleton (avoids re-querying within one request). */
+    protected static ?self $current = null;
 
-    /** The single store-settings row, cached. */
+    /** The single store-settings row. */
     public static function current(): self
     {
-        return Cache::rememberForever(self::CACHE_KEY, fn () => static::query()->firstOrCreate([]));
+        return static::$current ??= static::query()->firstOrCreate([]);
+    }
+
+    protected static function booted(): void
+    {
+        // Drop the in-request memo when the row changes.
+        static::saved(fn () => static::$current = null);
+        static::deleted(fn () => static::$current = null);
     }
 }

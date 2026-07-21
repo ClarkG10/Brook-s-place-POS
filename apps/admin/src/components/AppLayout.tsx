@@ -1,6 +1,6 @@
 import { applyTheme } from '@brooks/ui';
 import { useQuery } from '@tanstack/react-query';
-import { ClipboardList, Coffee, LayoutDashboard, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Boxes, ClipboardList, Coffee, LayoutDashboard, LogOut, Settings as SettingsIcon, ShoppingCart, UtensilsCrossed } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
@@ -8,7 +8,10 @@ import { useAuth } from '../lib/auth';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/pos', label: 'POS', icon: ShoppingCart, end: false },
   { to: '/orders', label: 'Orders', icon: ClipboardList, end: false },
+  { to: '/products', label: 'Products', icon: UtensilsCrossed, end: false },
+  { to: '/inventory', label: 'Inventory', icon: Boxes, end: false },
   { to: '/settings', label: 'Settings', icon: SettingsIcon, end: false },
 ];
 
