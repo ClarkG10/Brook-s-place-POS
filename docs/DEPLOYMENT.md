@@ -57,12 +57,13 @@ CORS_ALLOWED_ORIGINS=https://order.brooks.place,https://admin.brooks.place
 ```
 
 ### 1.5 Deploy script
-With **Root directory = `/backend`** set (§1.2), `$FORGE_RELEASE_DIRECTORY` is already the Laravel app root, so run Composer/Artisan plainly. Forge → **Deployments → Deploy Script**:
+The deploy script runs from the **repo root** (`$FORGE_RELEASE_DIRECTORY` = `…/releases/NNN`) — Forge's "Root directory" setting only changes what Nginx serves, **not** the script's working dir. So the script must `cd` into `backend/`. Forge → **Deployments → Deploy Script**:
 
 ```bash
 $CREATE_RELEASE()
 
-cd $FORGE_RELEASE_DIRECTORY
+cd $FORGE_RELEASE_DIRECTORY/backend
+ln -nsf ../.env .env
 
 $FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 $FORGE_PHP artisan migrate --force
@@ -74,9 +75,10 @@ $ACTIVATE_RELEASE()
 $RESTART_QUEUES()
 ```
 
-- **Keep the leading `$` on all three macros** — `$CREATE_RELEASE()`, `$ACTIVATE_RELEASE()`, `$RESTART_QUEUES()`. Writing `CREATE_RELEASE()` (no `$`) makes bash parse it as a function definition and throws `syntax error near unexpected token 'cd'`.
-- **Remove the default `npm ci` / `npm run build` lines** — the root build compiles both React apps, which belong on Vercel; this backend is API-only.
-- Do **not** add `-d backend`, `cd backend`, or `[ … ] || cd backend` — with Root directory set they double-nest into `backend/backend`, and shell conditionals here can break the macro script.
+- **`cd $FORGE_RELEASE_DIRECTORY/backend`** — the folder that has `composer.json` + `artisan` (fixes *"could not find a composer.json file in …/releases/NNN"*).
+- **`ln -nsf ../.env .env`** — Forge links the env at the release root, but Laravel (in `backend/`) reads `backend/.env`; this bridges them so `migrate`/`optimize` get the DB + config.
+- **Keep the leading `$` on all three macros** — `CREATE_RELEASE()` without `$` is parsed as a function definition → `syntax error near unexpected token 'cd'`.
+- **Remove the default `npm ci` / `npm run build` lines** — the frontends deploy to Vercel; this backend is API-only.
 - `optimize` = config + route + view cache in one.
 
 ### 1.5.1 Keep uploaded images across deploys (important for monorepo)
