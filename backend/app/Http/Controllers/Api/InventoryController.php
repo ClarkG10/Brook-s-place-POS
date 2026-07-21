@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\StockMovement;
 use App\Services\InventoryService;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class InventoryController extends Controller
 {
@@ -27,6 +30,109 @@ class InventoryController extends Controller
         ]);
 
         return response()->json(['ingredients' => $ingredients]);
+    }
+
+    /**
+     * Usage analytics over a date range: what we consumed, what it cost, the trend,
+     * the movement mix, and a "days of stock left" projection per ingredient.
+     */
+    public function analytics(Request $request): JsonResponse
+    {
+        [$from, $to] = $this->range($request);
+        $days = max(1, $from->diffInDays($to) + 1);
+
+        // Stock consumed (deductions) in range, joined to cost.
+        $deductions = fn () => StockMovement::query()
+            ->join('ingredients', 'ingredients.id', '=', 'stock_movements.ingredient_id')
+            ->where('stock_movements.type', 'deduction')
+            ->whereBetween('stock_movements.created_at', [$from, $to]);
+
+        $consumptionCost = (float) (clone $deductions())
+            ->sum(DB::raw('ABS(stock_movements.quantity_delta) * ingredients.cost_per_unit'));
+
+        $restockCost = (float) StockMovement::query()
+            ->join('ingredients', 'ingredients.id', '=', 'stock_movements.ingredient_id')
+            ->where('stock_movements.type', 'restock')
+            ->whereBetween('stock_movements.created_at', [$from, $to])
+            ->sum(DB::raw('stock_movements.quantity_delta * ingredients.cost_per_unit'));
+
+        $currentStockValue = (float) Ingredient::query()->sum(DB::raw('stock_quantity * cost_per_unit'));
+
+        $topConsumed = (clone $deductions())
+            ->select('ingredients.name', 'ingredients.unit',
+                DB::raw('SUM(ABS(stock_movements.quantity_delta)) as qty'),
+                DB::raw('SUM(ABS(stock_movements.quantity_delta) * ingredients.cost_per_unit) as cost'))
+            ->groupBy('ingredients.name', 'ingredients.unit')
+            ->orderByDesc('cost')->limit(10)->get()
+            ->map(fn ($r) => ['name' => $r->name, 'unit' => $r->unit, 'quantity' => (float) $r->qty, 'cost' => (float) $r->cost]);
+
+        // Daily consumption cost, gaps filled with zero.
+        $daily = (clone $deductions())
+            ->select(DB::raw('DATE(stock_movements.created_at) as d'),
+                DB::raw('SUM(ABS(stock_movements.quantity_delta) * ingredients.cost_per_unit) as cost'))
+            ->groupBy('d')->pluck('cost', 'd');
+        $byDay = [];
+        foreach (CarbonPeriod::create($from->copy()->startOfDay(), $to->copy()->startOfDay()) as $day) {
+            $key = $day->toDateString();
+            $byDay[] = ['date' => $key, 'cost' => (float) ($daily[$key] ?? 0)];
+        }
+
+        $typeCounts = StockMovement::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->select('type', DB::raw('COUNT(*) as count'))
+            ->groupBy('type')->pluck('count', 'type');
+        $movements = [
+            'deduction' => (int) ($typeCounts['deduction'] ?? 0),
+            'restock' => (int) ($typeCounts['restock'] ?? 0),
+            'adjustment' => (int) ($typeCounts['adjustment'] ?? 0),
+        ];
+
+        // Days-of-stock-left projection from average daily use in range.
+        $consumedById = (clone $deductions())
+            ->select('ingredients.id', DB::raw('SUM(ABS(stock_movements.quantity_delta)) as qty'))
+            ->groupBy('ingredients.id')->pluck('qty', 'ingredients.id');
+
+        $projections = Ingredient::query()->whereIn('id', $consumedById->keys()->all())->get()
+            ->map(function (Ingredient $ing) use ($consumedById, $days) {
+                $avgDaily = (float) $consumedById[$ing->id] / $days;
+
+                return [
+                    'name' => $ing->name,
+                    'unit' => $ing->unit,
+                    'stock_quantity' => (float) $ing->stock_quantity,
+                    'avg_daily_use' => round($avgDaily, 2),
+                    'days_left' => $avgDaily > 0 ? round((float) $ing->stock_quantity / $avgDaily, 1) : null,
+                ];
+            })
+            ->sortBy(fn ($r) => $r['days_left'] ?? INF)->values()->take(10);
+
+        return response()->json([
+            'range' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+            'summary' => [
+                'consumption_cost' => round($consumptionCost, 2),
+                'restock_cost' => round($restockCost, 2),
+                'current_stock_value' => round($currentStockValue, 2),
+                'tracked_ingredients' => Ingredient::count(),
+                'low_stock_count' => $this->inventory->lowStock()->count(),
+            ],
+            'top_consumed' => $topConsumed,
+            'by_day' => $byDay,
+            'movements' => $movements,
+            'projections' => $projections,
+        ]);
+    }
+
+    private function range(Request $request): array
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $to = isset($data['to']) ? Carbon::parse($data['to'])->endOfDay() : now()->endOfDay();
+        $from = isset($data['from']) ? Carbon::parse($data['from'])->startOfDay() : now()->subDays(6)->startOfDay();
+
+        return [$from, $to];
     }
 
     public function lowStock(): JsonResponse

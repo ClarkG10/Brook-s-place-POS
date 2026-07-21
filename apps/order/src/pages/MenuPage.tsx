@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { CartBar } from '../components/CartBar';
 import { CustomizeSheet } from '../components/CustomizeSheet';
 import { ProductCard } from '../components/ProductCard';
+import { HScroll, ScrollDownHint } from '../components/Scrollers';
 import { useMenu, useSettings } from '../hooks/queries';
 import { CategoryIcon } from '../lib/categoryIcon';
 import type { Product } from '../lib/types';
@@ -127,18 +128,18 @@ export function MenuPage() {
                 <h2 className="mb-3 flex items-center gap-1.5 font-display text-2xl font-bold">
                   <Sparkles className="size-5 text-[hsl(var(--accent))]" aria-hidden /> Popular right now
                 </h2>
-                <div className="no-scrollbar -mx-4 flex snap-x items-stretch gap-4 overflow-x-auto px-4 py-2">
+                <HScroll wrapperClassName="-mx-4" className="flex snap-x items-stretch gap-4 px-4 py-2">
                   {popular.map((p) => (
                     <div key={p.id} className="w-56 shrink-0 snap-start sm:w-60">
                       <ProductCard product={p} onSelect={handleSelect} flat />
                     </div>
                   ))}
-                </div>
+                </HScroll>
               </section>
             )}
 
             {/* Category rail */}
-            <div className="no-scrollbar sticky top-0 z-10 -mx-4 flex gap-2 overflow-x-auto bg-[hsl(var(--background))]/90 px-4 py-3 backdrop-blur">
+            <HScroll wrapperClassName="sticky top-0 z-10 -mx-4 bg-[hsl(var(--background))]/90 backdrop-blur" className="flex gap-2 px-4 py-3">
               {categories.map((cat) => {
                 const active = (current?.id ?? null) === cat.id;
                 return (
@@ -157,7 +158,7 @@ export function MenuPage() {
                   </button>
                 );
               })}
-            </div>
+            </HScroll>
 
             {current && (
               <section aria-label={current.name} className="pt-3">
@@ -176,6 +177,7 @@ export function MenuPage() {
       </main>
 
       <CustomizeSheet product={customizing} onClose={() => setCustomizing(null)} />
+      <ScrollDownHint />
       <CartBar />
     </div>
   );

@@ -64,23 +64,14 @@ class AuthController extends Controller
         return response()->json(['user' => $this->userPayload($user->fresh())]);
     }
 
-    /** Any authenticated user may change their own password (current one required). */
+    /** Any authenticated user may change their own password (new + confirmation only). */
     public function updatePassword(Request $request): JsonResponse
     {
-        $user = $request->user();
-
         $data = $request->validate([
-            'current_password' => ['required', 'string'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        if (! Hash::check($data['current_password'], $user->password)) {
-            throw ValidationException::withMessages([
-                'current_password' => ['Your current password is incorrect.'],
-            ]);
-        }
-
-        $user->update(['password' => $data['password']]); // 'hashed' cast handles hashing
+        $request->user()->update(['password' => $data['password']]); // 'hashed' cast handles hashing
 
         return response()->json(['message' => 'Password updated.']);
     }

@@ -10,7 +10,7 @@ export function AccountPage() {
 
   const [profile, setProfile] = useState({ name: '', email: '', username: '' });
   const [profileSaved, setProfileSaved] = useState(false);
-  const [pw, setPw] = useState({ current_password: '', password: '', password_confirmation: '' });
+  const [pw, setPw] = useState({ password: '', password_confirmation: '' });
   const [pwSaved, setPwSaved] = useState(false);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function AccountPage() {
   const savePassword = useMutation({
     mutationFn: () => api.updatePassword(pw),
     onSuccess: () => {
-      setPw({ current_password: '', password: '', password_confirmation: '' });
+      setPw({ password: '', password_confirmation: '' });
       setPwSaved(true);
       setTimeout(() => setPwSaved(false), 2500);
     },
@@ -109,10 +109,6 @@ export function AccountPage() {
             if (!pwMismatch) savePassword.mutate();
           }}
         >
-          <div className="space-y-1.5">
-            <Label htmlFor="current_password">Current password</Label>
-            <Input id="current_password" type="password" autoComplete="current-password" value={pw.current_password} onChange={(e) => setPw((p) => ({ ...p, current_password: e.target.value }))} />
-          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="password">New password</Label>

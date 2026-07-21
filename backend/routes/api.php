@@ -86,6 +86,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
 
     // Inventory
     Route::get('inventory', [InventoryController::class, 'index']);
+    Route::get('inventory/analytics', [InventoryController::class, 'analytics']);
     Route::get('inventory/low-stock', [InventoryController::class, 'lowStock']);
     Route::get('inventory/logs', [InventoryController::class, 'logs']);
     Route::post('inventory', [InventoryController::class, 'store']);

@@ -30,16 +30,27 @@ class ReportsAndDashboardTest extends TestCase
             ->assertOk()
             ->assertJsonStructure([
                 'range' => ['from', 'to'],
-                'summary' => ['gross_sales', 'orders', 'avg_order_value', 'items_sold', 'discount', 'tax'],
+                'summary' => ['gross_sales', 'orders', 'avg_order_value', 'items_sold', 'discount', 'tax', 'cogs', 'gross_profit', 'margin'],
+                'comparison' => ['gross_sales', 'orders', 'gross_sales_change', 'orders_change'],
                 'by_day' => [['date', 'total', 'orders']],
                 'by_payment',
                 'by_hour',
+                'by_category' => [['category', 'revenue', 'quantity']],
+                'by_source' => [['source', 'count', 'total']],
                 'top_products',
             ]);
 
         $this->assertSame(1, $res->json('summary.orders'));
         $this->assertSame(2, $res->json('summary.items_sold'));
         $this->assertGreaterThan(0, $res->json('summary.gross_sales'));
+        // COGS was deducted for the completed order, so profit is below gross and margin < 100.
+        $this->assertGreaterThan(0, $res->json('summary.cogs'));
+        $this->assertLessThan($res->json('summary.gross_sales'), $res->json('summary.cogs'));
+        $this->assertEqualsWithDelta(
+            $res->json('summary.gross_sales') - $res->json('summary.cogs'),
+            $res->json('summary.gross_profit'),
+            0.01,
+        );
     }
 
     public function test_sales_report_respects_date_range(): void

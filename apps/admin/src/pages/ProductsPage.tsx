@@ -1,4 +1,4 @@
-import { Badge, Button, EmptyState, Input, Label, Skeleton } from '@brooks/ui';
+import { Badge, Button, EmptyState, Input, Label, Modal, Skeleton, toast } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Coffee, ImagePlus, Loader2, Pencil, Plus, Search, Tags, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
@@ -127,7 +127,7 @@ function CategoriesManager({ categories, onClose, onChanged }: { categories: Adm
   const remove = useMutation({ mutationFn: (id: number) => api.deleteCategory(id), onSuccess: onChanged });
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+    <Modal onClose={onClose}>
       <div className="w-full max-w-md rounded-[var(--radius)] bg-[hsl(var(--card))] shadow-xl">
         <div className="flex items-center justify-between border-b border-[hsl(var(--border))] p-5">
           <h2 className="font-display text-lg font-bold">Categories</h2>
@@ -159,7 +159,7 @@ function CategoriesManager({ categories, onClose, onChanged }: { categories: Adm
           <Button disabled={!name.trim() || create.isPending} onClick={() => create.mutate()}>Add</Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -208,12 +208,21 @@ function ProductForm({ product, onClose, onSaved }: { product: AdminProduct | nu
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      toast({ variant: 'error', title: 'Image too large', description: 'Please choose an image under 4 MB.' });
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     try {
       const { url } = await api.uploadImage(file);
       set('image_url', url);
+      toast({ variant: 'success', title: 'Image uploaded' });
+    } catch {
+      toast({ variant: 'error', title: 'Upload failed', description: 'Use a JPG, PNG, or WebP under 4 MB.' });
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   }
 
@@ -242,6 +251,9 @@ function ProductForm({ product, onClose, onSaved }: { product: AdminProduct | nu
                 Remove
               </button>
             )}
+            <p className="mt-1.5 w-24 text-center text-[10px] leading-tight text-[hsl(var(--muted-foreground))]">
+              Square, ≥800×800px<br />JPG/PNG/WebP · max 4MB
+            </p>
           </div>
           <div className="flex-1 space-y-3">
             <div className="space-y-1.5">

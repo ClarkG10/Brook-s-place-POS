@@ -8,3 +8,5 @@ export { Spinner } from './components/spinner';
 export { Input } from './components/input';
 export { Label } from './components/label';
 export { EmptyState } from './components/empty-state';
+export { Modal } from './components/modal';
+export { Toaster, Tooltip, toast, dismissToast, type ToastVariant } from './components/toast';

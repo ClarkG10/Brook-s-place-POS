@@ -12,6 +12,10 @@ body,
 body {
   font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif;
   overscroll-behavior-y: contain; /* prevent pull-to-refresh jank on tablets */
+  /* Paint the theme background across the whole viewport so no white shows
+     through behind the app or around a sheet/modal overlay. */
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 /* Handwritten display for greetings and section titles. */

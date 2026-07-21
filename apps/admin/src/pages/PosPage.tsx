@@ -1,4 +1,4 @@
-import { Button, EmptyState, Input, Label, Skeleton } from '@brooks/ui';
+import { Button, EmptyState, Input, Label, Modal, Skeleton, toast } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Coffee, Minus, Plus, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -68,8 +68,27 @@ export function PosPage() {
     });
   }
 
+  function warnIfLow(product: MenuProduct) {
+    const left = product.max_producible;
+    if (left !== null && left <= 5) {
+      toast({
+        variant: left <= 3 ? 'warning' : 'info',
+        title: `Only ${left} more ${product.name} can be made`,
+        description: product.limiting_ingredient ? `${product.limiting_ingredient} is running low.` : 'An ingredient is running low.',
+      });
+    }
+  }
+
   function addProduct(product: MenuProduct) {
-    if (product.is_sold_out) return;
+    if (product.is_sold_out) {
+      toast({
+        variant: 'error',
+        title: `${product.name} is sold out`,
+        description: product.limiting_ingredient ? `Out of ${product.limiting_ingredient}.` : 'Not enough stock to make it.',
+      });
+      return;
+    }
+    warnIfLow(product);
     // Products with options open the customize sheet; simple items are one tap.
     if (product.option_groups.length > 0) {
       setCustomizing(product);
@@ -311,7 +330,7 @@ function PosCustomize({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-4">
+    <Modal onClose={onClose}>
       <div className="my-8 flex max-h-[85vh] w-full max-w-md flex-col rounded-[var(--radius)] bg-[hsl(var(--card))] shadow-xl">
         <div className="flex items-center justify-between border-b border-[hsl(var(--border))] p-5">
           <h2 className="font-display text-lg font-bold">{product.name}</h2>
@@ -357,6 +376,6 @@ function PosCustomize({
           <Button size="lg" className="w-full" onClick={add}>Add · {money(unitPrice)}</Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

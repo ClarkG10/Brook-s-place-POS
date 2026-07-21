@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\StockMovement;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
@@ -62,6 +63,42 @@ class ReportController extends Controller
             ->groupBy('h')->orderBy('h')->get()
             ->map(fn ($r) => ['hour' => (int) $r->h, 'orders' => (int) $r->c, 'total' => (float) $r->total]);
 
+        // Revenue by category (joins items -> product -> category; deleted products fall to "Uncategorized").
+        $byCategory = OrderItem::query()
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->leftJoin('products', 'products.id', '=', 'order_items.product_id')
+            ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
+            ->where('orders.status', 'completed')
+            ->whereBetween('orders.completed_at', [$from, $to])
+            ->select(DB::raw("COALESCE(categories.name, 'Uncategorized') as category"), DB::raw('SUM(order_items.line_total) as revenue'), DB::raw('SUM(order_items.quantity) as qty'))
+            ->groupBy('category')->orderByDesc('revenue')->get()
+            ->map(fn ($r) => ['category' => $r->category, 'revenue' => (float) $r->revenue, 'quantity' => (int) $r->qty]);
+
+        // Orders by channel (qr / tablet / pos).
+        $bySource = (clone $completed())
+            ->select('source', DB::raw('COUNT(*) as count'), DB::raw('SUM(total) as total'))
+            ->groupBy('source')->get()
+            ->map(fn ($r) => ['source' => $r->source ?? 'unknown', 'count' => (int) $r->count, 'total' => (float) $r->total]);
+
+        // Cost of goods sold: value of stock deducted for orders completed in range.
+        $cogs = (float) StockMovement::query()
+            ->join('ingredients', 'ingredients.id', '=', 'stock_movements.ingredient_id')
+            ->join('orders', 'orders.id', '=', 'stock_movements.order_id')
+            ->where('stock_movements.type', 'deduction')
+            ->where('orders.status', 'completed')
+            ->whereBetween('orders.completed_at', [$from, $to])
+            ->sum(DB::raw('ABS(stock_movements.quantity_delta) * ingredients.cost_per_unit'));
+        $grossProfit = round($gross - $cogs, 2);
+
+        // Previous equal-length period, for growth deltas.
+        $spanSeconds = max(1, $to->getTimestamp() - $from->getTimestamp());
+        $prevTo = (clone $from)->subSecond();
+        $prevFrom = (clone $prevTo)->subSeconds($spanSeconds);
+        $prevCompleted = fn () => Order::where('status', 'completed')->whereBetween('completed_at', [$prevFrom, $prevTo]);
+        $prevGross = (float) (clone $prevCompleted())->sum('total');
+        $prevOrders = (clone $prevCompleted())->count();
+        $pct = fn (float $cur, float $prev): ?float => $prev > 0.0 ? round((($cur - $prev) / $prev) * 100, 1) : null;
+
         return response()->json([
             'range' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
             'summary' => [
@@ -71,10 +108,21 @@ class ReportController extends Controller
                 'items_sold' => $itemsSold,
                 'discount' => round($discount, 2),
                 'tax' => round($tax, 2),
+                'cogs' => round($cogs, 2),
+                'gross_profit' => $grossProfit,
+                'margin' => $gross > 0 ? round(($grossProfit / $gross) * 100, 1) : 0,
+            ],
+            'comparison' => [
+                'gross_sales' => round($prevGross, 2),
+                'orders' => $prevOrders,
+                'gross_sales_change' => $pct($gross, $prevGross),
+                'orders_change' => $pct((float) $orders, (float) $prevOrders),
             ],
             'by_day' => $byDay,
             'by_payment' => $byPayment,
             'by_hour' => $byHour,
+            'by_category' => $byCategory,
+            'by_source' => $bySource,
             'top_products' => $topProducts,
         ]);
     }

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -95,8 +94,8 @@ class AuthTest extends TestCase
     {
         $user = $this->staff('cashier', ['password' => 'oldpass123']);
 
+        // No current password required — just the new password + confirmation.
         $this->actingAs($user, 'sanctum')->putJson('/api/auth/password', [
-            'current_password' => 'oldpass123',
             'password' => 'brandnew123',
             'password_confirmation' => 'brandnew123',
         ])->assertOk();
@@ -104,14 +103,13 @@ class AuthTest extends TestCase
         $this->assertTrue(Hash::check('brandnew123', $user->fresh()->password));
     }
 
-    public function test_password_change_requires_correct_current_password(): void
+    public function test_password_change_requires_matching_confirmation(): void
     {
-        $user = $this->staff('cashier', ['password' => 'oldpass123']);
+        $user = $this->staff('cashier');
 
         $this->actingAs($user, 'sanctum')->putJson('/api/auth/password', [
-            'current_password' => 'WRONG',
             'password' => 'brandnew123',
-            'password_confirmation' => 'brandnew123',
-        ])->assertStatus(422)->assertJsonValidationErrors('current_password');
+            'password_confirmation' => 'different99',
+        ])->assertStatus(422)->assertJsonValidationErrors('password');
     }
 }

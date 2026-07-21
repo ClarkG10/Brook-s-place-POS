@@ -80,6 +80,46 @@ class InventoryTest extends TestCase
         $this->assertDatabaseMissing('ingredients', ['id' => $ing->id]);
     }
 
+    public function test_analytics_reports_usage_cost_and_projections(): void
+    {
+        $this->seedStore();
+        $staff = $this->staff('barista');
+        $product = \App\Models\Product::where('slug', 'americano')->firstOrFail();
+
+        // Complete an order so there are deduction movements to analyse.
+        $this->postJson('/api/public/orders', ['items' => [['product_id' => $product->id, 'quantity' => 2]]]);
+        $order = Order::latest()->first();
+        $this->actingAs($staff, 'sanctum')->patchJson("/api/admin/orders/{$order->id}/status", ['status' => 'completed'])->assertOk();
+
+        $res = $this->actingAs($this->staff('manager'), 'sanctum')->getJson('/api/admin/inventory/analytics')
+            ->assertOk()
+            ->assertJsonStructure([
+                'range' => ['from', 'to'],
+                'summary' => ['consumption_cost', 'restock_cost', 'current_stock_value', 'tracked_ingredients', 'low_stock_count'],
+                'top_consumed' => [['name', 'unit', 'quantity', 'cost']],
+                'by_day' => [['date', 'cost']],
+                'movements' => ['deduction', 'restock', 'adjustment'],
+                'projections' => [['name', 'unit', 'stock_quantity', 'avg_daily_use', 'days_left']],
+            ]);
+
+        // Coffee Beans were consumed (18g × 2), so they surface in usage + projections.
+        $this->assertGreaterThan(0, $res->json('summary.consumption_cost'));
+        $this->assertGreaterThan(0, $res->json('summary.current_stock_value'));
+        $this->assertContains('Coffee Beans', array_column($res->json('top_consumed'), 'name'));
+        $this->assertGreaterThanOrEqual(1, $res->json('movements.deduction'));
+    }
+
+    public function test_analytics_is_empty_without_movements(): void
+    {
+        $this->seedStore();
+
+        $res = $this->actingAs($this->staff('manager'), 'sanctum')->getJson('/api/admin/inventory/analytics')->assertOk();
+
+        $this->assertEquals(0, $res->json('summary.consumption_cost'));
+        $this->assertCount(0, $res->json('top_consumed'));
+        $this->assertGreaterThan(0, $res->json('summary.current_stock_value')); // seeded stock still has value
+    }
+
     /**
      * Ingredient replacement: an option with replaces_ingredient_id skips the base
      * ingredient it replaces and consumes its own instead (e.g. oat milk swaps out milk).

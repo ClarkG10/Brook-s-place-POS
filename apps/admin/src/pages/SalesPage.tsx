@@ -1,8 +1,19 @@
 import { Button, Card, Input, Skeleton, Spinner } from '@brooks/ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Coins, Download, Package, Receipt, TrendingUp } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Coins, Download, Layers, Package, Percent, PiggyBank, Receipt, Store, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { api } from '../lib/api';
+
+function Delta({ change }: { change: number | null }) {
+  if (change === null) return <span className="text-xs text-[hsl(var(--muted-foreground))]">vs prev · —</span>;
+  const up = change >= 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${up ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--danger))]'}`}>
+      {up ? <ArrowUpRight className="size-3.5" aria-hidden /> : <ArrowDownRight className="size-3.5" aria-hidden />}
+      {Math.abs(change)}% <span className="font-normal text-[hsl(var(--muted-foreground))]">vs prev</span>
+    </span>
+  );
+}
 
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -51,11 +62,18 @@ export function SalesPage() {
   const maxHour = Math.max(1, ...(data?.by_hour.map((h) => h.orders) ?? [1]));
 
   const stats = [
-    { label: 'Gross Sales', value: money(data?.summary.gross_sales ?? 0), icon: Coins, tone: 'text-[hsl(var(--success))]' },
-    { label: 'Orders', value: String(data?.summary.orders ?? 0), icon: Receipt, tone: 'text-[hsl(var(--primary))]' },
-    { label: 'Avg Order', value: money(data?.summary.avg_order_value ?? 0), icon: TrendingUp, tone: 'text-[hsl(var(--accent))]' },
-    { label: 'Items Sold', value: String(data?.summary.items_sold ?? 0), icon: Package, tone: 'text-[hsl(var(--primary))]' },
+    { label: 'Gross Sales', value: money(data?.summary.gross_sales ?? 0), icon: Coins, tone: 'text-[hsl(var(--success))]', change: data?.comparison.gross_sales_change ?? null },
+    { label: 'Orders', value: String(data?.summary.orders ?? 0), icon: Receipt, tone: 'text-[hsl(var(--primary))]', change: data?.comparison.orders_change ?? null },
+    { label: 'Avg Order', value: money(data?.summary.avg_order_value ?? 0), icon: TrendingUp, tone: 'text-[hsl(var(--accent))]', change: undefined },
+    { label: 'Items Sold', value: String(data?.summary.items_sold ?? 0), icon: Package, tone: 'text-[hsl(var(--primary))]', change: undefined },
   ];
+
+  const profit = [
+    { label: 'Cost of Goods', value: money(data?.summary.cogs ?? 0), icon: PiggyBank, hint: 'Ingredient cost of completed orders' },
+    { label: 'Gross Profit', value: money(data?.summary.gross_profit ?? 0), icon: Coins, hint: 'Gross sales − cost of goods' },
+    { label: 'Margin', value: `${data?.summary.margin ?? 0}%`, icon: Percent, hint: 'Profit as a share of sales' },
+  ];
+  const maxCat = Math.max(1, ...(data?.by_category.map((c) => c.revenue) ?? [1]));
 
   return (
     <div className="space-y-6">
@@ -104,6 +122,21 @@ export function SalesPage() {
                   <s.icon className={`size-5 ${s.tone}`} aria-hidden />
                 </div>
                 <p className="mt-2 font-display text-2xl font-bold tabular-nums">{s.value}</p>
+                {s.change !== undefined && <div className="mt-1"><Delta change={s.change} /></div>}
+              </Card>
+            ))}
+          </div>
+
+          {/* Profitability (ties sales to ingredient cost) */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {profit.map((s) => (
+              <Card key={s.label} className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-[hsl(var(--muted-foreground))]">{s.label}</span>
+                  <s.icon className="size-5 text-[hsl(var(--accent))]" aria-hidden />
+                </div>
+                <p className="mt-2 font-display text-2xl font-bold tabular-nums">{s.value}</p>
+                <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{s.hint}</p>
               </Card>
             ))}
           </div>
@@ -174,6 +207,41 @@ export function SalesPage() {
                     </div>
                   ))}
                 </div>
+              ) : <p className="text-sm text-[hsl(var(--muted-foreground))]">—</p>}
+            </Card>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className="p-5 lg:col-span-2">
+              <h2 className="mb-4 flex items-center gap-1.5 font-display text-sm font-bold"><Layers className="size-4 text-[hsl(var(--primary))]" aria-hidden /> Sales by category</h2>
+              {data?.by_category.length ? (
+                <ul className="space-y-3">
+                  {data.by_category.map((c) => (
+                    <li key={c.category}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="font-medium">{c.category}</span>
+                        <span className="tabular-nums text-[hsl(var(--muted-foreground))]">{c.quantity} sold · <span className="font-semibold text-[hsl(var(--foreground))]">{money(c.revenue)}</span></span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-[hsl(var(--muted))]">
+                        <div className="h-full rounded-full bg-[hsl(var(--primary))] transition-all" style={{ width: `${Math.max(2, (c.revenue / maxCat) * 100)}%` }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="text-sm text-[hsl(var(--muted-foreground))]">No sales in this range.</p>}
+            </Card>
+
+            <Card className="p-5">
+              <h2 className="mb-4 flex items-center gap-1.5 font-display text-sm font-bold"><Store className="size-4 text-[hsl(var(--accent))]" aria-hidden /> By channel</h2>
+              {data?.by_source.length ? (
+                <ul className="space-y-2.5 text-sm">
+                  {data.by_source.map((s) => (
+                    <li key={s.source} className="flex items-center justify-between">
+                      <span className="uppercase">{s.source}</span>
+                      <span className="tabular-nums text-[hsl(var(--muted-foreground))]">{s.count} · {money(s.total)}</span>
+                    </li>
+                  ))}
+                </ul>
               ) : <p className="text-sm text-[hsl(var(--muted-foreground))]">—</p>}
             </Card>
           </div>

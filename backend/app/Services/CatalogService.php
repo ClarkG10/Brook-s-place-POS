@@ -54,6 +54,7 @@ class CatalogService
                             'is_new' => $p->is_new,
                             'is_sold_out' => $avail['is_sold_out'],
                             'max_producible' => $avail['max_producible'],
+                            'limiting_ingredient' => $avail['limiting_ingredient'],
                             'option_groups' => $p->optionGroups->map(fn ($g) => [
                                 'id' => $g->id,
                                 'name' => $g->name,

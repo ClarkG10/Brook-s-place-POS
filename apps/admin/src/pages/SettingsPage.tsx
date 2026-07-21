@@ -1,4 +1,4 @@
-import { applyTheme, Button, Card, Input, Label, Skeleton } from '@brooks/ui';
+import { applyTheme, Button, Card, Input, Label, Skeleton, toast } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ImagePlus, Loader2, Store } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -75,12 +75,21 @@ export function SettingsPage() {
   async function onLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      toast({ variant: 'error', title: 'Image too large', description: 'Please choose an image under 4 MB.' });
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     try {
       const { url } = await api.uploadImage(file);
       set('logo_url', url);
+      toast({ variant: 'success', title: 'Logo uploaded' });
+    } catch {
+      toast({ variant: 'error', title: 'Upload failed', description: 'Use a JPG, PNG, or WebP under 4 MB.' });
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   }
 
@@ -116,6 +125,7 @@ export function SettingsPage() {
           <div>
             <p className="text-sm font-medium">Logo</p>
             <p className="text-xs text-[hsl(var(--muted-foreground))]">Shown in the admin nav and on the customer app.</p>
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">Square, ≥512×512px · PNG (transparent) or WebP · max 4MB.</p>
             <div className="mt-1.5 flex gap-3 text-xs font-semibold">
               <label className="cursor-pointer text-[hsl(var(--primary))]">
                 {form.logo_url ? 'Change' : 'Upload'}

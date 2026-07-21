@@ -1,4 +1,4 @@
-import { Badge, Button, EmptyState, Input, Spinner } from '@brooks/ui';
+import { Badge, Button, EmptyState, Input, Modal, Spinner } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardList, LayoutGrid, Printer, Rows3, Search, X } from 'lucide-react';
 import { useState } from 'react';
@@ -243,7 +243,7 @@ function OrderDetailModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-4">
+    <Modal onClose={onClose}>
       <div className="my-8 w-full max-w-lg rounded-[var(--radius)] bg-[hsl(var(--card))] shadow-xl">
         <div className="flex items-start justify-between gap-2 border-b border-[hsl(var(--border))] p-5">
           <div>
@@ -304,6 +304,6 @@ function OrderDetailModal({
           {next && <Button disabled={busy} onClick={() => onAdvance(next.status)}>{next.label}</Button>}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

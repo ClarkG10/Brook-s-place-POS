@@ -1,4 +1,4 @@
-import { Button, Card, EmptyState, Input, Label, Skeleton } from '@brooks/ui';
+import { Button, Card, EmptyState, Input, Label, Modal, Skeleton } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, ShieldCheck, Trash2, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -143,8 +143,8 @@ function StaffModal({ existing, onClose, onSaved }: { existing: StaffUser | null
   const err = save.error instanceof ApiError ? save.error.message : null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={onClose}>
-      <Card className="w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <Card className="w-full max-w-md p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-bold">{isEdit ? `Edit ${existing?.name}` : 'Add staff'}</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="grid size-9 cursor-pointer place-items-center rounded-lg text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]">
@@ -200,6 +200,6 @@ function StaffModal({ existing, onClose, onSaved }: { existing: StaffUser | null
           </div>
         </form>
       </Card>
-    </div>
+    </Modal>
   );
 }

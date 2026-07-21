@@ -186,11 +186,23 @@ export interface StockLog {
 
 export interface SalesReport {
   range: { from: string; to: string };
-  summary: { gross_sales: number; orders: number; avg_order_value: number; items_sold: number; discount: number; tax: number };
+  summary: { gross_sales: number; orders: number; avg_order_value: number; items_sold: number; discount: number; tax: number; cogs: number; gross_profit: number; margin: number };
+  comparison: { gross_sales: number; orders: number; gross_sales_change: number | null; orders_change: number | null };
   by_day: { date: string; total: number; orders: number }[];
   by_payment: { method: string; count: number; total: number }[];
   by_hour: { hour: number; orders: number; total: number }[];
+  by_category: { category: string; revenue: number; quantity: number }[];
+  by_source: { source: string; count: number; total: number }[];
   top_products: { name: string; quantity: number; revenue: number }[];
+}
+
+export interface InventoryAnalytics {
+  range: { from: string; to: string };
+  summary: { consumption_cost: number; restock_cost: number; current_stock_value: number; tracked_ingredients: number; low_stock_count: number };
+  top_consumed: { name: string; unit: string; quantity: number; cost: number }[];
+  by_day: { date: string; cost: number }[];
+  movements: { deduction: number; restock: number; adjustment: number };
+  projections: { name: string; unit: string; stock_quantity: number; avg_daily_use: number; days_left: number | null }[];
 }
 
 export interface MenuOption {
@@ -214,6 +226,8 @@ export interface MenuProduct {
   base_price: number;
   image_url: string | null;
   is_sold_out: boolean;
+  max_producible: number | null;
+  limiting_ingredient: string | null;
   option_groups: MenuOptionGroup[];
 }
 export interface MenuCategory {
@@ -244,7 +258,7 @@ export const api = {
   // Self-service account
   updateProfile: (payload: { name: string; email: string; username: string }) =>
     request<{ user: AdminUser }>('/auth/profile', { method: 'PUT', body: JSON.stringify(payload) }).then((r) => r.user),
-  updatePassword: (payload: { current_password: string; password: string; password_confirmation: string }) =>
+  updatePassword: (payload: { password: string; password_confirmation: string }) =>
     request<{ message: string }>('/auth/password', { method: 'PUT', body: JSON.stringify(payload) }),
 
   // Staff management (owner only)
@@ -300,6 +314,12 @@ export const api = {
       body: JSON.stringify({ quantity, mode, note }),
     }),
   inventoryLogs: () => request<{ data: StockLog[] }>('/admin/inventory/logs').then((r) => r.data),
+  inventoryAnalytics: (from?: string, to?: string) => {
+    const qs = new URLSearchParams();
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    return request<InventoryAnalytics>(`/admin/inventory/analytics${qs.toString() ? `?${qs}` : ''}`);
+  },
 
   // Image upload (multipart — bypasses the JSON helper)
   uploadImage: async (file: File): Promise<{ path: string; url: string }> => {

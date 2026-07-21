@@ -1,4 +1,4 @@
-import { Button } from '@brooks/ui';
+import { Button, Modal } from '@brooks/ui';
 import { Printer, X } from 'lucide-react';
 import { dateTime } from '../lib/format';
 import type { AdminSettings, Order } from '../lib/api';
@@ -17,7 +17,7 @@ export function ReceiptModal({
   const money = (n: number) => `${sym}${n.toFixed(2)}`;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+    <Modal onClose={onClose} className="print:static print:block print:bg-transparent print:p-0">
       <div className="w-full max-w-sm rounded-[var(--radius)] bg-[hsl(var(--card))] shadow-xl">
         <div className="no-print flex items-center justify-between border-b border-[hsl(var(--border))] p-4">
           <h2 className="font-display text-sm font-bold">Receipt · {order.order_number}</h2>
@@ -99,7 +99,7 @@ export function ReceiptModal({
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
