@@ -63,7 +63,6 @@ The deploy script runs from the **repo root** (`$FORGE_RELEASE_DIRECTORY` = `…
 $CREATE_RELEASE()
 
 cd $FORGE_RELEASE_DIRECTORY/backend
-ln -nsf ../.env .env
 
 $FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 $FORGE_PHP artisan migrate --force
@@ -75,8 +74,8 @@ $ACTIVATE_RELEASE()
 $RESTART_QUEUES()
 ```
 
-- **`cd $FORGE_RELEASE_DIRECTORY/backend`** — the folder that has `composer.json` + `artisan` (fixes *"could not find a composer.json file in …/releases/NNN"*).
-- **`ln -nsf ../.env .env`** — Forge links the env at the release root, but Laravel (in `backend/`) reads `backend/.env`; this bridges them so `migrate`/`optimize` get the DB + config.
+- **`cd $FORGE_RELEASE_DIRECTORY/backend`** — `$FORGE_RELEASE_DIRECTORY` is the repo root; the Laravel app is in `backend/` (fixes *"could not find a composer.json file in …/releases/NNN"*).
+- **Do NOT add `ln -nsf ../.env .env`.** With **Root directory = `/backend`**, Forge already links the real env at `backend/.env`. A bridge symlink overwrites it with a broken link → Laravel can't read `.env` → falls back to the framework default `DB_CONNECTION=sqlite`, silently migrating into a throwaway `database/database.sqlite` instead of MySQL.
 - **Keep the leading `$` on all three macros** — `CREATE_RELEASE()` without `$` is parsed as a function definition → `syntax error near unexpected token 'cd'`.
 - **Remove the default `npm ci` / `npm run build` lines** — the frontends deploy to Vercel; this backend is API-only.
 - `optimize` = config + route + view cache in one.
