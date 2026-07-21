@@ -22,7 +22,7 @@ Provision a server with **PHP 8.3+**, **MySQL 8**, and **Redis** (Forge offers a
 ### 1.2 Site
 - **Create a site** on the server, e.g. `api.brooks.place`.
 - **Repository:** `ClarkG10/Brook-s-place-POS`, branch `main`.
-- **IMPORTANT — Web Directory:** set it to **`/backend/public`** (this is a monorepo; the Laravel app is in `backend/`).
+- **IMPORTANT — monorepo directories** (Forge → site → *Meta/Directories*): set **Root directory = `/backend`** and **Web directory = `/public`**. Forge then serves `…/current/backend/public` and runs the deploy context inside `backend/`. (On older Forge without a Root-directory field, instead set Web Directory to `/backend/public`.)
 - Enable **Let's Encrypt SSL**.
 
 ### 1.3 Database
@@ -61,31 +61,28 @@ This is a **monorepo** — the Laravel app is in `backend/`, so Composer/Artisan
 
 Forge's release-macro format (keep the `$CREATE_RELEASE()` / `$ACTIVATE_RELEASE()` / `$RESTART_QUEUES()` macros):
 
+Robust script that works whether or not the Root-directory field is set (it locates `composer.json` itself):
+
 ```bash
 $CREATE_RELEASE()
 
 cd $FORGE_RELEASE_DIRECTORY
+[ -f composer.json ] || cd backend        # monorepo: enter the Laravel app if not already there
+[ -f .env ] || ln -nsf ../.env .env       # bridge env only if Forge linked it at the release root
 
-# Monorepo: the Laravel app is in backend/. Link the env file Forge placed at the
-# release root so Laravel (which reads backend/.env) finds it.
-ln -nsf ../.env backend/.env
-
-# Install PHP deps in backend/ (NOT the repo root). No npm — the frontends deploy
-# to Vercel; this backend is an API only.
-$FORGE_COMPOSER install -d backend --no-dev --no-interaction --prefer-dist --optimize-autoloader
-
-$FORGE_PHP backend/artisan migrate --force
-$FORGE_PHP backend/artisan storage:link
-$FORGE_PHP backend/artisan optimize
+$FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+$FORGE_PHP artisan migrate --force
+$FORGE_PHP artisan storage:link
+$FORGE_PHP artisan optimize
 
 $ACTIVATE_RELEASE()
 
 $RESTART_QUEUES()
 ```
 
-- `-d backend` tells Composer the project root (fixes *"could not find a composer.json file"*); `backend/artisan` runs Artisan there.
+- With **Root directory = `/backend`** set, `$FORGE_RELEASE_DIRECTORY` is already the Laravel app — so run Composer/Artisan plainly (no `-d backend`, no `backend/artisan`; those would double-nest into `backend/backend`).
 - **Remove any `npm ci` / `npm run build`** — the root build would compile both React apps, which belong on Vercel. This backend is API-only and needs no JS build.
-- `ln -nsf ../.env backend/.env` bridges Forge's release-root env file to Laravel's expected `backend/.env`.
+- The `[ -f composer.json ] || cd backend` line is a safety net against the *"could not find a composer.json file"* error.
 - `optimize` = config + route + view cache in one.
 
 ### 1.5.1 Keep uploaded images across deploys (important for monorepo)
