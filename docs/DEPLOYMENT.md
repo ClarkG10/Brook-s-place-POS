@@ -57,18 +57,12 @@ CORS_ALLOWED_ORIGINS=https://order.brooks.place,https://admin.brooks.place
 ```
 
 ### 1.5 Deploy script
-This is a **monorepo** — the Laravel app is in `backend/`, so Composer/Artisan must target that folder (Forge otherwise runs `composer install` at the repo root and fails with *"could not find a composer.json file"*). Forge → **Deployments → Deploy Script**, replace the whole script with:
-
-Forge's release-macro format (keep the `$CREATE_RELEASE()` / `$ACTIVATE_RELEASE()` / `$RESTART_QUEUES()` macros):
-
-Robust script that works whether or not the Root-directory field is set (it locates `composer.json` itself):
+With **Root directory = `/backend`** set (§1.2), `$FORGE_RELEASE_DIRECTORY` is already the Laravel app root, so run Composer/Artisan plainly. Forge → **Deployments → Deploy Script**:
 
 ```bash
 $CREATE_RELEASE()
 
 cd $FORGE_RELEASE_DIRECTORY
-[ -f composer.json ] || cd backend        # monorepo: enter the Laravel app if not already there
-[ -f .env ] || ln -nsf ../.env .env       # bridge env only if Forge linked it at the release root
 
 $FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 $FORGE_PHP artisan migrate --force
@@ -80,9 +74,9 @@ $ACTIVATE_RELEASE()
 $RESTART_QUEUES()
 ```
 
-- With **Root directory = `/backend`** set, `$FORGE_RELEASE_DIRECTORY` is already the Laravel app — so run Composer/Artisan plainly (no `-d backend`, no `backend/artisan`; those would double-nest into `backend/backend`).
-- **Remove any `npm ci` / `npm run build`** — the root build would compile both React apps, which belong on Vercel. This backend is API-only and needs no JS build.
-- The `[ -f composer.json ] || cd backend` line is a safety net against the *"could not find a composer.json file"* error.
+- **Keep the leading `$` on all three macros** — `$CREATE_RELEASE()`, `$ACTIVATE_RELEASE()`, `$RESTART_QUEUES()`. Writing `CREATE_RELEASE()` (no `$`) makes bash parse it as a function definition and throws `syntax error near unexpected token 'cd'`.
+- **Remove the default `npm ci` / `npm run build` lines** — the root build compiles both React apps, which belong on Vercel; this backend is API-only.
+- Do **not** add `-d backend`, `cd backend`, or `[ … ] || cd backend` — with Root directory set they double-nest into `backend/backend`, and shell conditionals here can break the macro script.
 - `optimize` = config + route + view cache in one.
 
 ### 1.5.1 Keep uploaded images across deploys (important for monorepo)
