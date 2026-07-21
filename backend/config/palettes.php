@@ -66,8 +66,18 @@ return [
 
     // Management portal — calmer, data-dense, dark-mode aware.
     'admin' => [
+        'moss' => [
+            'label' => 'Moss (natural cafe)',
+            'tokens' => [
+                'primary' => '96 22% 32%', 'primary-foreground' => '80 30% 97%',
+                'accent' => '18 52% 52%', 'accent-foreground' => '30 40% 98%',
+                'background' => '40 30% 97%', 'foreground' => '30 16% 18%',
+                'card' => '0 0% 100%', 'muted' => '40 24% 92%', 'muted-foreground' => '30 10% 42%',
+                'border' => '38 20% 86%', 'ring' => '18 52% 52%', 'radius' => '0.9rem',
+            ],
+        ],
         'slate' => [
-            'label' => 'Slate (default)',
+            'label' => 'Slate',
             'tokens' => [
                 'primary' => '222 47% 40%', 'primary-foreground' => '210 40% 98%',
                 'accent' => '221 83% 53%', 'accent-foreground' => '210 40% 98%',

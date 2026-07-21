@@ -7,8 +7,14 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        // Handwritten display (greetings, section titles) + friendly rounded body.
+        display: ['Caveat', 'ui-serif', 'cursive'],
+        hand: ['Caveat', 'ui-serif', 'cursive'],
+        sans: ['Nunito', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
+      rotate: {
+        'sketch-1': '-1.2deg',
+        'sketch-2': '1.4deg',
       },
     },
   },

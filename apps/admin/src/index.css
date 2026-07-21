@@ -3,21 +3,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Admin default palette (slate) before settings load / on the login screen. */
+/* Admin default palette (moss / natural cafe) before settings load / on login. */
 :root {
-  --primary: 222 47% 40%;
-  --primary-foreground: 210 40% 98%;
-  --accent: 221 83% 53%;
-  --accent-foreground: 210 40% 98%;
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
+  --primary: 96 22% 32%;
+  --primary-foreground: 80 30% 97%;
+  --accent: 18 52% 52%;
+  --accent-foreground: 30 40% 98%;
+  --background: 40 30% 97%;
+  --foreground: 30 16% 18%;
   --card: 0 0% 100%;
-  --muted: 210 40% 94%;
-  --muted-foreground: 215 16% 42%;
-  --border: 214 20% 88%;
-  --input: 214 20% 88%;
-  --ring: 221 83% 53%;
-  --radius: 0.65rem;
+  --muted: 40 24% 92%;
+  --muted-foreground: 30 10% 42%;
+  --border: 38 20% 86%;
+  --input: 38 20% 86%;
+  --ring: 18 52% 52%;
+  --radius: 0.9rem;
 }
 
 .dark {
@@ -38,11 +38,12 @@ body,
 }
 
 body {
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif;
 }
 
 .font-display {
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+  letter-spacing: -0.01em;
 }
 
 /* Receipt printing: isolate the receipt on the page when printing. */

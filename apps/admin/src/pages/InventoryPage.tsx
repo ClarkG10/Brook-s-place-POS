@@ -1,6 +1,6 @@
-import { Button, EmptyState, Input, Label, Skeleton } from '@brooks/ui';
+import { Badge, Button, EmptyState, Input, Label, Skeleton } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Boxes, Plus, X } from 'lucide-react';
+import { Boxes, History, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { api, type Ingredient } from '../lib/api';
 
@@ -16,9 +16,11 @@ export function InventoryPage() {
   const { data: ingredients, isPending } = useQuery({ queryKey: ['inventory'], queryFn: api.inventory });
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
+  const [view, setView] = useState<'stock' | 'logs'>('stock');
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['inventory'] });
+    qc.invalidateQueries({ queryKey: ['inventory-logs'] });
     qc.invalidateQueries({ queryKey: ['products'] });
     qc.invalidateQueries({ queryKey: ['pos-menu'] });
     qc.invalidateQueries({ queryKey: ['dashboard'] });
@@ -41,13 +43,30 @@ export function InventoryPage() {
         </Button>
       </div>
 
-      {isPending ? (
+      <div className="flex gap-2">
+        {(['stock', 'logs'] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setView(v)}
+            className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
+              view === v ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'bg-[hsl(var(--muted))]'
+            }`}
+          >
+            {v === 'stock' ? 'Stock' : 'Activity log'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'logs' ? (
+        <LogsTable />
+      ) : isPending ? (
         <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-[var(--radius)]" />)}</div>
       ) : !ingredients?.length ? (
         <EmptyState icon={Boxes} title="No inventory items" description="Add ingredients and packaging to track stock." />
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius)] border border-[hsl(var(--border))]">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-[var(--radius)] border border-[hsl(var(--border))]">
+          <table className="w-full min-w-[34rem] text-sm">
             <thead className="bg-[hsl(var(--muted))] text-left text-xs uppercase text-[hsl(var(--muted-foreground))]">
               <tr>
                 <th className="p-3">Item</th>
@@ -151,6 +170,59 @@ function IngredientForm({ ingredient, onClose, onSaved }: { ingredient: Ingredie
           <Button type="submit" disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</Button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function LogsTable() {
+  const { data: logs, isPending } = useQuery({ queryKey: ['inventory-logs'], queryFn: api.inventoryLogs });
+
+  if (isPending) {
+    return <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-[var(--radius)]" />)}</div>;
+  }
+  if (!logs?.length) {
+    return <EmptyState icon={History} title="No activity yet" description="Auto-deductions, restocks and adjustments appear here." />;
+  }
+
+  const variant = (t: string): 'danger' | 'success' | 'warning' =>
+    t === 'deduction' ? 'danger' : t === 'restock' ? 'success' : 'warning';
+
+  return (
+    <div className="overflow-x-auto rounded-[var(--radius)] border border-[hsl(var(--border))]">
+      <table className="w-full min-w-[44rem] text-sm">
+        <thead className="bg-[hsl(var(--muted))] text-left text-xs uppercase text-[hsl(var(--muted-foreground))]">
+          <tr>
+            <th className="p-3">When</th>
+            <th className="p-3">Ingredient</th>
+            <th className="p-3">Action</th>
+            <th className="p-3">Before → After</th>
+            <th className="p-3">Change</th>
+            <th className="p-3">Source</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[hsl(var(--border))]">
+          {logs.map((l) => {
+            const before = l.balance_after - l.quantity_delta;
+            return (
+              <tr key={l.id} className="bg-[hsl(var(--card))]">
+                <td className="whitespace-nowrap p-3 text-xs text-[hsl(var(--muted-foreground))]">{new Date(l.created_at).toLocaleString()}</td>
+                <td className="p-3 font-medium">{l.ingredient}</td>
+                <td className="p-3"><Badge variant={variant(l.type)} className="capitalize">{l.type}</Badge></td>
+                <td className="whitespace-nowrap p-3 tabular-nums text-[hsl(var(--muted-foreground))]">
+                  {before.toFixed(1)} → {l.balance_after.toFixed(1)} {l.unit}
+                </td>
+                <td className={`p-3 font-semibold tabular-nums ${l.quantity_delta < 0 ? 'text-[hsl(var(--danger))]' : 'text-[hsl(var(--success))]'}`}>
+                  {l.quantity_delta > 0 ? '+' : ''}{l.quantity_delta} {l.unit}
+                </td>
+                <td className="p-3 text-xs text-[hsl(var(--muted-foreground))]">
+                  {l.order_number ? `Order ${l.order_number}` : l.note}
+                  {l.user ? ` · ${l.user}` : ''}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
+use App\Models\StockMovement;
 use App\Services\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,21 +43,52 @@ class InventoryController extends Controller
         return response()->json(['ingredients' => $low]);
     }
 
-    /** Add stock to an ingredient (restock). */
+    /** Recent stock movements (audit log). */
+    public function logs(Request $request): JsonResponse
+    {
+        $logs = StockMovement::with(['ingredient:id,name,unit', 'user:id,name', 'order:id,order_number'])
+            ->latest()
+            ->paginate((int) $request->query('per_page', 30));
+
+        return response()->json(
+            $logs->through(fn (StockMovement $m) => [
+                'id' => $m->id,
+                'type' => $m->type,
+                'quantity_delta' => (float) $m->quantity_delta,
+                'balance_after' => (float) $m->balance_after,
+                'note' => $m->note,
+                'ingredient' => $m->ingredient?->name,
+                'unit' => $m->ingredient?->unit,
+                'order_number' => $m->order?->order_number,
+                'user' => $m->user?->name,
+                'created_at' => $m->created_at,
+            ])
+        );
+    }
+
+    /** Add or set an ingredient's stock (logged). */
     public function restock(Request $request, Ingredient $ingredient): JsonResponse
     {
         $data = $request->validate([
             'quantity' => ['required', 'numeric'],
             'mode' => ['nullable', 'in:add,set'],
+            'note' => ['nullable', 'string', 'max:120'],
         ]);
 
-        if (($data['mode'] ?? 'add') === 'set') {
-            $ingredient->stock_quantity = $data['quantity'];
-        } else {
-            $ingredient->increment('stock_quantity', $data['quantity']);
-        }
+        $old = (float) $ingredient->stock_quantity;
+        $mode = $data['mode'] ?? 'add';
+        $ingredient->stock_quantity = $mode === 'set' ? (float) $data['quantity'] : $old + (float) $data['quantity'];
         $ingredient->save();
 
+        $delta = (float) $ingredient->stock_quantity - $old;
+        $this->inventory->record(
+            $ingredient,
+            $mode === 'set' ? 'adjustment' : 'restock',
+            $delta,
+            $data['note'] ?? ($mode === 'set' ? 'Manual adjustment' : 'Restock'),
+            null,
+            $request->user()->id,
+        );
         $this->inventory->flush();
 
         return response()->json([
@@ -69,6 +101,9 @@ class InventoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $ingredient = Ingredient::create($this->validated($request));
+        if ((float) $ingredient->stock_quantity > 0) {
+            $this->inventory->record($ingredient, 'adjustment', (float) $ingredient->stock_quantity, 'Initial stock', null, $request->user()->id);
+        }
         $this->inventory->flush();
 
         return response()->json($ingredient, 201);
@@ -76,7 +111,13 @@ class InventoryController extends Controller
 
     public function update(Request $request, Ingredient $ingredient): JsonResponse
     {
+        $old = (float) $ingredient->stock_quantity;
         $ingredient->update($this->validated($request));
+
+        $delta = (float) $ingredient->stock_quantity - $old;
+        if (abs($delta) > 0.0001) {
+            $this->inventory->record($ingredient, 'adjustment', $delta, 'Edited stock', null, $request->user()->id);
+        }
         $this->inventory->flush();
 
         return response()->json($ingredient);

@@ -23,7 +23,7 @@ class ProductController extends Controller
         $availability = $this->inventory->availabilityMap();
 
         $products = Product::query()
-            ->with(['category', 'recipeItems.ingredient'])
+            ->with(['category', 'recipeItems.ingredient', 'optionGroups.options'])
             ->orderBy('category_id')
             ->orderBy('sort_order')
             ->get()
@@ -39,9 +39,10 @@ class ProductController extends Controller
 
         $product = Product::create($data);
         $this->syncRecipe($product, $request);
+        $this->syncOptionGroups($product, $request);
         $this->flush();
 
-        return response()->json($this->present($product->fresh(['category', 'recipeItems.ingredient']), $this->inventory->availabilityMap()), 201);
+        return response()->json($this->present($product->fresh(['category', 'recipeItems.ingredient', 'optionGroups.options']), $this->inventory->availabilityMap()), 201);
     }
 
     public function update(Request $request, Product $product): JsonResponse
@@ -49,9 +50,10 @@ class ProductController extends Controller
         $data = $this->validateProduct($request);
         $product->update($data);
         $this->syncRecipe($product, $request);
+        $this->syncOptionGroups($product, $request);
         $this->flush();
 
-        return response()->json($this->present($product->fresh(['category', 'recipeItems.ingredient']), $this->inventory->availabilityMap()));
+        return response()->json($this->present($product->fresh(['category', 'recipeItems.ingredient', 'optionGroups.options']), $this->inventory->availabilityMap()));
     }
 
     public function destroy(Product $product): JsonResponse
@@ -68,6 +70,7 @@ class ProductController extends Controller
             'category_id' => ['required', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:255'],
+            'image_url' => ['nullable', 'string', 'max:500'],
             'base_price' => ['required', 'numeric', 'min:0'],
             'prep_time_minutes' => ['nullable', 'integer', 'min:0', 'max:120'],
             'is_active' => ['boolean'],
@@ -78,7 +81,46 @@ class ProductController extends Controller
             'recipe' => ['sometimes', 'array'],
             'recipe.*.ingredient_id' => ['required_with:recipe', 'exists:ingredients,id'],
             'recipe.*.quantity' => ['required_with:recipe', 'numeric', 'min:0'],
+            // Optional customization sync: option groups with options (each option can consume stock)
+            'option_groups' => ['sometimes', 'array'],
+            'option_groups.*.name' => ['required', 'string', 'max:60'],
+            'option_groups.*.min_select' => ['nullable', 'integer', 'min:0'],
+            'option_groups.*.max_select' => ['nullable', 'integer', 'min:1'],
+            'option_groups.*.is_required' => ['boolean'],
+            'option_groups.*.options' => ['required', 'array', 'min:1'],
+            'option_groups.*.options.*.name' => ['required', 'string', 'max:60'],
+            'option_groups.*.options.*.price_delta' => ['nullable', 'numeric'],
+            'option_groups.*.options.*.is_default' => ['boolean'],
+            'option_groups.*.options.*.consumes_ingredient_id' => ['nullable', 'exists:ingredients,id'],
+            'option_groups.*.options.*.consume_quantity' => ['nullable', 'numeric', 'min:0'],
         ]);
+    }
+
+    private function syncOptionGroups(Product $product, Request $request): void
+    {
+        if (! $request->has('option_groups')) {
+            return;
+        }
+        $product->optionGroups()->delete(); // cascade removes their options
+        foreach ($request->input('option_groups', []) as $gi => $g) {
+            $group = $product->optionGroups()->create([
+                'name' => $g['name'],
+                'min_select' => $g['min_select'] ?? 0,
+                'max_select' => $g['max_select'] ?? 1,
+                'is_required' => $g['is_required'] ?? false,
+                'sort_order' => $gi,
+            ]);
+            foreach ($g['options'] ?? [] as $oi => $o) {
+                $group->options()->create([
+                    'name' => $o['name'],
+                    'price_delta' => $o['price_delta'] ?? 0,
+                    'is_default' => $o['is_default'] ?? false,
+                    'sort_order' => $oi,
+                    'consumes_ingredient_id' => $o['consumes_ingredient_id'] ?? null,
+                    'consume_quantity' => $o['consume_quantity'] ?? 0,
+                ]);
+            }
+        }
     }
 
     private function syncRecipe(Product $product, Request $request): void
@@ -106,6 +148,7 @@ class ProductController extends Controller
             'name' => $p->name,
             'slug' => $p->slug,
             'description' => $p->description,
+            'image_url' => $p->image_url,
             'base_price' => (float) $p->base_price,
             'prep_time_minutes' => $p->prep_time_minutes,
             'is_active' => $p->is_active,
@@ -120,6 +163,21 @@ class ProductController extends Controller
                 'ingredient' => $r->ingredient?->name,
                 'unit' => $r->ingredient?->unit,
                 'quantity' => (float) $r->quantity,
+            ]),
+            'option_groups' => $p->optionGroups->map(fn ($g) => [
+                'id' => $g->id,
+                'name' => $g->name,
+                'min_select' => $g->min_select,
+                'max_select' => $g->max_select,
+                'is_required' => $g->is_required,
+                'options' => $g->options->map(fn ($o) => [
+                    'id' => $o->id,
+                    'name' => $o->name,
+                    'price_delta' => (float) $o->price_delta,
+                    'is_default' => $o->is_default,
+                    'consumes_ingredient_id' => $o->consumes_ingredient_id,
+                    'consume_quantity' => (float) $o->consume_quantity,
+                ]),
             ]),
         ];
     }

@@ -6,6 +6,7 @@ use App\Models\Ingredient;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\RecipeItem;
+use App\Models\StockMovement;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -132,31 +133,52 @@ class InventoryService
         DB::transaction(function () use ($order) {
             $order->loadMissing('items');
 
+            // Aggregate total consumption per ingredient across the whole order,
+            // so the log has one clean movement per ingredient per order.
+            $consumption = [];
             foreach ($order->items as $item) {
                 if (! $item->product_id) {
                     continue;
                 }
-
-                // Base recipe consumption.
-                $recipe = RecipeItem::where('product_id', $item->product_id)->get();
-                foreach ($recipe as $ri) {
-                    Ingredient::where('id', $ri->ingredient_id)
-                        ->decrement('stock_quantity', (float) $ri->quantity * $item->quantity);
+                foreach (RecipeItem::where('product_id', $item->product_id)->get() as $ri) {
+                    $consumption[$ri->ingredient_id] = ($consumption[$ri->ingredient_id] ?? 0) + (float) $ri->quantity * $item->quantity;
                 }
-
-                // Add-on option consumption (e.g. Pearls, Extra Shot).
                 foreach ((array) $item->options as $opt) {
                     if (! empty($opt['consumes_ingredient_id']) && ! empty($opt['consume_quantity'])) {
-                        Ingredient::where('id', $opt['consumes_ingredient_id'])
-                            ->decrement('stock_quantity', (float) $opt['consume_quantity'] * $item->quantity);
+                        $id = (int) $opt['consumes_ingredient_id'];
+                        $consumption[$id] = ($consumption[$id] ?? 0) + (float) $opt['consume_quantity'] * $item->quantity;
                     }
                 }
+            }
+
+            foreach ($consumption as $ingredientId => $qty) {
+                $ingredient = Ingredient::find($ingredientId);
+                if (! $ingredient || $qty <= 0) {
+                    continue;
+                }
+                $ingredient->stock_quantity = (float) $ingredient->stock_quantity - $qty;
+                $ingredient->save();
+                $this->record($ingredient, 'deduction', -$qty, "Order {$order->order_number}", $order->id, $order->cashier_id);
             }
 
             $order->forceFill(['inventory_deducted' => true])->save();
         });
 
         $this->flush();
+    }
+
+    /** Write a stock-movement log row for an ingredient's current balance. */
+    public function record(Ingredient $ingredient, string $type, float $delta, ?string $note = null, ?int $orderId = null, ?int $userId = null): void
+    {
+        StockMovement::create([
+            'ingredient_id' => $ingredient->id,
+            'type' => $type,
+            'quantity_delta' => $delta,
+            'balance_after' => (float) $ingredient->stock_quantity,
+            'note' => $note,
+            'order_id' => $orderId,
+            'user_id' => $userId,
+        ]);
     }
 
     public function flush(): void

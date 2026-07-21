@@ -98,6 +98,23 @@ export interface DashboardSummary {
   recent_orders: { data: Order[] };
 }
 
+export interface AdminOption {
+  id?: number;
+  name: string;
+  price_delta: number;
+  is_default: boolean;
+  consumes_ingredient_id: number | null;
+  consume_quantity: number;
+}
+export interface AdminOptionGroup {
+  id?: number;
+  name: string;
+  min_select: number;
+  max_select: number;
+  is_required: boolean;
+  options: AdminOption[];
+}
+
 export interface AdminProduct {
   id: number;
   category_id: number;
@@ -105,6 +122,7 @@ export interface AdminProduct {
   name: string;
   slug: string;
   description: string | null;
+  image_url: string | null;
   base_price: number;
   prep_time_minutes: number;
   is_active: boolean;
@@ -115,6 +133,7 @@ export interface AdminProduct {
   is_sold_out: boolean;
   limiting_ingredient: string | null;
   recipe: { ingredient_id: number; ingredient: string | null; unit: string | null; quantity: number }[];
+  option_groups: AdminOptionGroup[];
 }
 
 export interface AdminCategory {
@@ -137,6 +156,19 @@ export interface Ingredient {
   low_stock_threshold: number;
   cost_per_unit: number;
   status: 'green' | 'yellow' | 'orange' | 'red';
+}
+
+export interface StockLog {
+  id: number;
+  type: 'deduction' | 'restock' | 'adjustment';
+  quantity_delta: number;
+  balance_after: number;
+  note: string | null;
+  ingredient: string | null;
+  unit: string | null;
+  order_number: string | null;
+  user: string | null;
+  created_at: string;
 }
 
 export interface MenuOption {
@@ -221,9 +253,24 @@ export const api = {
     request<Ingredient>('/admin/inventory', { method: 'POST', body: JSON.stringify(i) }),
   updateIngredient: (id: number, i: Record<string, unknown>) =>
     request<Ingredient>(`/admin/inventory/${id}`, { method: 'PUT', body: JSON.stringify(i) }),
-  restockIngredient: (id: number, quantity: number, mode: 'add' | 'set' = 'add') =>
+  restockIngredient: (id: number, quantity: number, mode: 'add' | 'set' = 'add', note?: string) =>
     request<{ id: number; stock_quantity: number; status: string }>(`/admin/inventory/${id}/restock`, {
       method: 'POST',
-      body: JSON.stringify({ quantity, mode }),
+      body: JSON.stringify({ quantity, mode, note }),
     }),
+  inventoryLogs: () => request<{ data: StockLog[] }>('/admin/inventory/logs').then((r) => r.data),
+
+  // Image upload (multipart — bypasses the JSON helper)
+  uploadImage: async (file: File): Promise<{ path: string; url: string }> => {
+    const token = getToken();
+    const fd = new FormData();
+    fd.append('image', file);
+    const res = await fetch(`${BASE}/api/admin/uploads`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: fd,
+    });
+    if (!res.ok) throw new ApiError(res.status, 'Upload failed');
+    return res.json();
+  },
 };

@@ -32,7 +32,7 @@ export function CartPage() {
         />
       ) : (
         <>
-          <ul className="flex-1 divide-y divide-[hsl(var(--border))] px-4">
+          <ul className="mx-auto w-full max-w-2xl flex-1 divide-y divide-[hsl(var(--border))] px-4">
             {lines.map((line) => (
               <li key={line.id} className="flex gap-3 py-4">
                 <div className="min-w-0 flex-1">

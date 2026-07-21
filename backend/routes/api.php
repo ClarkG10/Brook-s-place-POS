@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\ProductController;
+use App\Http\Controllers\Api\Admin\UploadController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InventoryController;
@@ -60,9 +61,13 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::put('categories/{category}', [CategoryController::class, 'update']);
     Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
 
+    // Image uploads
+    Route::post('uploads', [UploadController::class, 'store']);
+
     // Inventory
     Route::get('inventory', [InventoryController::class, 'index']);
     Route::get('inventory/low-stock', [InventoryController::class, 'lowStock']);
+    Route::get('inventory/logs', [InventoryController::class, 'logs']);
     Route::post('inventory', [InventoryController::class, 'store']);
     Route::post('inventory/{ingredient}/restock', [InventoryController::class, 'restock']);
     Route::put('inventory/{ingredient}', [InventoryController::class, 'update']);

@@ -22,7 +22,7 @@ class StoreSettingsSeeder extends Seeder
             'receipt_header' => "Brook's Place",
             'receipt_footer' => 'Thank you, come again!',
             'public_theme' => ['palette' => 'espresso'],
-            'admin_theme' => ['palette' => 'slate', 'mode' => 'light'],
+            'admin_theme' => ['palette' => 'moss', 'mode' => 'light'],
         ]);
 
         // Staff accounts for the management portal.

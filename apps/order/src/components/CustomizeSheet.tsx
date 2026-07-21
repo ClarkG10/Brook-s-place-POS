@@ -130,7 +130,7 @@ function Sheet({ product, onClose }: { product: Product; onClose: () => void }) 
                         type="button"
                         aria-pressed={active}
                         onClick={() => toggle(group, option)}
-                        className={`flex cursor-pointer items-center justify-between gap-2 rounded-[calc(var(--radius)-0.4rem)] border px-3.5 py-2.5 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
+                        className={`flex min-h-12 cursor-pointer items-center justify-between gap-2 rounded-[calc(var(--radius)-0.4rem)] border px-4 py-3 text-base transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
                           active
                             ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))]/10 font-semibold text-[hsl(var(--foreground))]'
                             : 'border-[hsl(var(--border))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]'

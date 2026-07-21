@@ -10,20 +10,53 @@ body,
 }
 
 body {
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  /* prevent pull-to-refresh jank on tablets during ordering */
-  overscroll-behavior-y: contain;
+  font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+  overscroll-behavior-y: contain; /* prevent pull-to-refresh jank on tablets */
 }
 
+/* Handwritten display for greetings and section titles. */
 .font-display {
-  font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Caveat', ui-serif, cursive;
+  letter-spacing: 0.01em;
 }
 
-/* Hide scrollbars on the horizontal category rail while keeping it scrollable */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@layer utilities {
+  /* Organic, hand-drawn corners (unique per corner). Themeable via radius only. */
+  .wobble {
+    border-radius: 1.5rem 1.15rem 1.6rem 1.25rem;
+  }
+  .wobble-2 {
+    border-radius: 1.15rem 1.6rem 1.2rem 1.55rem;
+  }
+  /* Soft "sticker" offset shadow — inked from the foreground token so it themes. */
+  .sketch-shadow {
+    box-shadow: 3px 4px 0 hsl(var(--foreground) / 0.1);
+  }
+  .sketch-shadow-primary {
+    box-shadow: 3px 4px 0 hsl(var(--primary) / 0.18);
+  }
+}
+
+/* Playful pop when an item is added (respects reduced-motion via tokens.css). */
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18) rotate(-6deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+.animate-pop {
+  animation: pop 0.35s ease-out;
 }

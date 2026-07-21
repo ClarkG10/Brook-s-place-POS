@@ -2,7 +2,6 @@ import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from './store/cart';
-import { WelcomePage } from './pages/WelcomePage';
 import { MenuPage } from './pages/MenuPage';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
@@ -22,9 +21,9 @@ function TableEntry() {
 
 export function App() {
   return (
-    <div className="mx-auto min-h-full w-full max-w-2xl">
+    <div className="mx-auto min-h-full w-full max-w-6xl">
       <Routes>
-        <Route path="/" element={<WelcomePage />} />
+        <Route path="/" element={<MenuPage />} />
         <Route path="/order/table/:table" element={<TableEntry />} />
         <Route path="/menu" element={<MenuPage />} />
         <Route path="/cart" element={<CartPage />} />

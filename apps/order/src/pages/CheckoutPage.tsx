@@ -52,7 +52,7 @@ export function CheckoutPage() {
         <h1 className="font-display text-lg font-bold">Checkout</h1>
       </header>
 
-      <main className="flex-1 space-y-6 p-4">
+      <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 p-4">
         <div className="space-y-2">
           <Label htmlFor="customer-name">Your name (optional)</Label>
           <Input

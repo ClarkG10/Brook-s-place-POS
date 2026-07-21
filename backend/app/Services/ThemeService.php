@@ -9,7 +9,7 @@ namespace App\Services;
  */
 class ThemeService
 {
-    public const DEFAULTS = ['public' => 'espresso', 'admin' => 'slate'];
+    public const DEFAULTS = ['public' => 'espresso', 'admin' => 'moss'];
 
     /** All selectable palettes for a surface (for the settings picker). */
     public function palettes(string $surface): array
