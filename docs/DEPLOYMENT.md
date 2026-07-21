@@ -57,24 +57,47 @@ CORS_ALLOWED_ORIGINS=https://order.brooks.place,https://admin.brooks.place
 ```
 
 ### 1.5 Deploy script
-Forge → **Deployments → Deploy Script** (this repo is a monorepo, so `cd backend`):
+This is a **monorepo** — the Laravel app is in `backend/`, so Composer/Artisan must target that folder (Forge otherwise runs `composer install` at the repo root and fails with *"could not find a composer.json file"*). Forge → **Deployments → Deploy Script**, replace the whole script with:
+
+Forge's release-macro format (keep the `$CREATE_RELEASE()` / `$ACTIVATE_RELEASE()` / `$RESTART_QUEUES()` macros):
 
 ```bash
-cd /home/forge/api.brooks.place
-git pull origin $FORGE_SITE_BRANCH
+$CREATE_RELEASE()
 
-cd backend
-$FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+cd $FORGE_RELEASE_DIRECTORY
 
-$FORGE_PHP artisan migrate --force
-$FORGE_PHP artisan storage:link || true
-$FORGE_PHP artisan config:cache
-$FORGE_PHP artisan route:cache
-$FORGE_PHP artisan view:cache
-$FORGE_PHP artisan queue:restart
+# Monorepo: the Laravel app is in backend/. Link the env file Forge placed at the
+# release root so Laravel (which reads backend/.env) finds it.
+ln -nsf ../.env backend/.env
 
-( flock -w 10 9 || exit 1; sudo -S service $FORGE_PHP_FPM reload ) 9>/tmp/fpmlock
+# Install PHP deps in backend/ (NOT the repo root). No npm — the frontends deploy
+# to Vercel; this backend is an API only.
+$FORGE_COMPOSER install -d backend --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+$FORGE_PHP backend/artisan migrate --force
+$FORGE_PHP backend/artisan storage:link
+$FORGE_PHP backend/artisan optimize
+
+$ACTIVATE_RELEASE()
+
+$RESTART_QUEUES()
 ```
+
+- `-d backend` tells Composer the project root (fixes *"could not find a composer.json file"*); `backend/artisan` runs Artisan there.
+- **Remove any `npm ci` / `npm run build`** — the root build would compile both React apps, which belong on Vercel. This backend is API-only and needs no JS build.
+- `ln -nsf ../.env backend/.env` bridges Forge's release-root env file to Laravel's expected `backend/.env`.
+- `optimize` = config + route + view cache in one.
+
+### 1.5.1 Keep uploaded images across deploys (important for monorepo)
+With Forge's default **zero-downtime (release) deploys**, each deploy is a new folder, so files uploaded to `backend/storage/app/public` (product & logo images) would disappear on the next deploy. Pick one:
+
+- **Easiest:** turn **OFF** "Zero-downtime deployment" for this site (Forge → site → *Deployments* settings). Then `backend/storage` is stable and uploads persist. The script above still works.
+- **Keep zero-downtime:** point `backend/storage` at Forge's shared storage by adding this **above** the composer line, then re-run `storage:link`:
+  ```bash
+  mkdir -p ../storage/app/public ../storage/framework/{cache,sessions,views} ../storage/logs
+  rm -rf backend/storage && ln -nsf ../storage backend/storage
+  ```
+- **Best for scale (later):** set `FILESYSTEM_DISK=s3` and upload to S3/R2 so local disk doesn't matter.
 
 ### 1.6 Queue worker (for background jobs / heavy operations)
 Forge → **Daemons** (not the Queue tab, because we need the `backend/` subdir):
