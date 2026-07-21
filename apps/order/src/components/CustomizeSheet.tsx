@@ -81,17 +81,17 @@ function Sheet({ product, onClose }: { product: Product; onClose: () => void }) 
         role="dialog"
         aria-modal="true"
         aria-label={`Customize ${product.name}`}
-        className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92vh] w-full max-w-2xl flex-col rounded-t-[1.75rem] bg-[hsl(var(--card))]"
+        className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[1.75rem] bg-[hsl(var(--card))]"
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[hsl(var(--border))] p-5">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[hsl(var(--border))] p-5">
           <div>
-            <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))]">{product.name}</h2>
+            <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">{product.name}</h2>
             {product.description && (
-              <p className="mt-0.5 text-sm text-[hsl(var(--muted-foreground))]">{product.description}</p>
+              <p className="mt-0.5 text-base text-[hsl(var(--muted-foreground))]">{product.description}</p>
             )}
           </div>
           <button
@@ -104,7 +104,7 @@ function Sheet({ product, onClose }: { product: Product; onClose: () => void }) 
           </button>
         </div>
 
-        <div className="flex-1 space-y-6 overflow-y-auto p-5">
+        <div className="flex-1 space-y-6 overflow-y-auto overscroll-contain p-5">
           {/* Product hero */}
           <div className="wobble-2 relative aspect-[5/3] w-full overflow-hidden">
             {product.image_url ? (
@@ -121,17 +121,17 @@ function Sheet({ product, onClose }: { product: Product; onClose: () => void }) 
             return (
               <fieldset key={group.id}>
                 <legend className="mb-2 flex w-full items-center justify-between">
-                  <span className="font-display text-sm font-semibold text-[hsl(var(--foreground))]">
+                  <span className="font-display text-lg font-bold text-[hsl(var(--foreground))]">
                     {group.name}
                     {(group.is_required || group.min_select > 0) && (
                       <span className="ml-1 text-[hsl(var(--danger))]">*</span>
                     )}
                   </span>
                   {group.max_select > 1 && (
-                    <span className="text-xs text-[hsl(var(--muted-foreground))]">Up to {group.max_select}</span>
+                    <span className="text-sm font-medium text-[hsl(var(--muted-foreground))]">Up to {group.max_select}</span>
                   )}
                 </legend>
-                {invalid && <p className="mb-2 text-xs text-[hsl(var(--danger))]">Please choose an option.</p>}
+                {invalid && <p className="mb-2 text-sm text-[hsl(var(--danger))]">Please choose an option.</p>}
                 <div className="grid grid-cols-2 gap-2">
                   {group.options.map((option) => {
                     const active = (selection[group.id] ?? []).some((o) => o.id === option.id);
@@ -141,18 +141,18 @@ function Sheet({ product, onClose }: { product: Product; onClose: () => void }) 
                         type="button"
                         aria-pressed={active}
                         onClick={() => toggle(group, option)}
-                        className={`flex min-h-12 cursor-pointer items-center justify-between gap-2 rounded-[calc(var(--radius)-0.4rem)] border px-4 py-3 text-base transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
+                        className={`flex min-h-[3.25rem] cursor-pointer items-center justify-between gap-2 rounded-[calc(var(--radius)-0.4rem)] border px-4 py-3 text-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
                           active
-                            ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))]/10 font-semibold text-[hsl(var(--foreground))]'
-                            : 'border-[hsl(var(--border))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]'
+                            ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))]/10 font-bold text-[hsl(var(--foreground))]'
+                            : 'border-[hsl(var(--border))] font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]'
                         }`}
                       >
                         <span className="flex items-center gap-1.5">
-                          {active && <Check className="size-4 text-[hsl(var(--primary))]" aria-hidden />}
+                          {active && <Check className="size-5 shrink-0 text-[hsl(var(--primary))]" aria-hidden />}
                           {option.name}
                         </span>
                         {option.price_delta !== 0 && (
-                          <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                          <span className="shrink-0 text-sm font-semibold text-[hsl(var(--muted-foreground))]">
                             {option.price_delta > 0 ? `+${money(option.price_delta)}` : money(option.price_delta)}
                           </span>
                         )}
@@ -165,8 +165,8 @@ function Sheet({ product, onClose }: { product: Product; onClose: () => void }) 
           })}
 
           <div>
-            <label htmlFor="line-notes" className="mb-2 block font-display text-sm font-semibold">
-              Notes <span className="font-normal text-[hsl(var(--muted-foreground))]">(optional)</span>
+            <label htmlFor="line-notes" className="mb-2 block font-display text-lg font-bold">
+              Notes <span className="text-base font-normal text-[hsl(var(--muted-foreground))]">(optional)</span>
             </label>
             <textarea
               id="line-notes"
@@ -175,12 +175,12 @@ function Sheet({ product, onClose }: { product: Product; onClose: () => void }) 
               maxLength={255}
               rows={2}
               placeholder="e.g. No straw, less sweet"
-              className="w-full resize-none rounded-[calc(var(--radius)-0.35rem)] border border-[hsl(var(--input))] bg-[hsl(var(--card))] p-3 text-sm placeholder:text-[hsl(var(--muted-foreground))] focus-visible:border-[hsl(var(--ring))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]/40"
+              className="w-full resize-none rounded-[calc(var(--radius)-0.35rem)] border border-[hsl(var(--input))] bg-[hsl(var(--card))] p-3 text-base placeholder:text-[hsl(var(--muted-foreground))] focus-visible:border-[hsl(var(--ring))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]/40"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-3 border-t border-[hsl(var(--border))] p-5">
+        <div className="flex shrink-0 items-center gap-3 border-t border-[hsl(var(--border))] p-5">
           <div className="flex items-center gap-1 rounded-full border border-[hsl(var(--border))] p-1">
             <button
               type="button"
