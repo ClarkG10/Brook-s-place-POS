@@ -1,0 +1,21 @@
+{
+  "name": "brooks-place",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Smart POS system for coffee, milk tea and beverage shops",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:order": "npm run dev --workspace @brooks/order-app",
+    "dev:admin": "npm run dev --workspace @brooks/admin-app",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "backend:serve": "php backend/artisan serve",
+    "backend:migrate": "php backend/artisan migrate:fresh --seed"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

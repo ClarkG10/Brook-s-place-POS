@@ -1,0 +1,55 @@
+/*
+ * Base design tokens. Color tokens are HSL channels held in CSS variables so the
+ * live palette (fetched per-surface from the backend settings) can be injected at
+ * runtime by applyTheme(). Values here are safe fallbacks used before the API responds.
+ */
+:root {
+  --primary: 25 65% 31%;
+  --primary-foreground: 36 33% 97%;
+  --accent: 32 95% 44%;
+  --accent-foreground: 25 40% 15%;
+
+  --background: 36 33% 97%;
+  --foreground: 25 25% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: var(--foreground);
+  --muted: 36 20% 92%;
+  --muted-foreground: 25 12% 42%;
+
+  --border: 30 18% 86%;
+  --input: 30 18% 86%;
+  --ring: 32 95% 44%;
+
+  /* Status colors — fixed (inventory traffic-lights, order states). */
+  --success: 142 71% 40%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 38 60% 12%;
+  --danger: 0 72% 51%;
+  --danger-foreground: 0 0% 100%;
+
+  --radius: 1rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Accessibility: respect reduced-motion globally. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

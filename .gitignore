@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Laravel
+/backend/vendor/
+/backend/storage/*.key
+/backend/storage/framework/cache/data/*
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
+/backend/storage/logs/*
+/backend/bootstrap/cache/*.php
+/backend/public/storage
+/backend/database/*.sqlite
+/backend/.phpunit.result.cache
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+npm-debug.log*
+
+# Vite / PWA
+apps/*/dev-dist/
+
+# UI/UX Pro Max skill — keep the runtime (src/ + metadata), drop dev/publishing bloat
+/.claude/skills/ui-ux-pro-max/.claude/
+/.claude/skills/ui-ux-pro-max/cli/
+/.claude/skills/ui-ux-pro-max/stack/
+/.claude/skills/ui-ux-pro-max/.github/
+/.claude/skills/ui-ux-pro-max/projects/
+/.claude/skills/ui-ux-pro-max/screenshots/
+/.claude/skills/ui-ux-pro-max/preview/
+/.claude/skills/ui-ux-pro-max/docs/
