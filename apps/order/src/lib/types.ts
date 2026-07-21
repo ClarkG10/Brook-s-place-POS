@@ -64,6 +64,16 @@ export interface PlacedOrder {
   placed_at: string;
 }
 
+export interface OrderStatusItem {
+  product_name: string;
+  image_url: string | null;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  options: string[];
+  notes: string | null;
+}
+
 export interface OrderStatus extends PlacedOrder {
-  items: { product_name: string; quantity: number; options: string[]; notes: string | null }[];
+  items: OrderStatusItem[];
 }

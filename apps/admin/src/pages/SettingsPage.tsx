@@ -2,10 +2,13 @@ import { applyTheme, Button, Card, Input, Label, Skeleton } from '@brooks/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ImagePlus, Loader2, Store } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { api, ApiError, type Palette } from '../lib/api';
+import { useAuth } from '../lib/auth';
 
 export function SettingsPage() {
   const qc = useQueryClient();
+  const currentUser = useAuth((s) => s.user);
   const { data: settings, isPending } = useQuery({ queryKey: ['admin-settings'], queryFn: api.settings });
 
   const [form, setForm] = useState({
@@ -53,6 +56,9 @@ export function SettingsPage() {
       setTimeout(() => setSaved(false), 2500);
     },
   });
+
+  // Only the owner may change store settings (staff can read via the shared theme fetch).
+  if (currentUser && !currentUser.is_owner) return <Navigate to="/" replace />;
 
   if (isPending || !settings) {
     return (

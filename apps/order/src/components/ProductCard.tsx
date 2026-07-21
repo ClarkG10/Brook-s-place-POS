@@ -1,5 +1,5 @@
 import { Badge } from '@brooks/ui';
-import { Clock, GlassWater, Plus } from 'lucide-react';
+import { Clock, GlassWater, Plus, Star } from 'lucide-react';
 import { money } from '../lib/format';
 import type { Product } from '../lib/types';
 
@@ -27,7 +27,11 @@ export function ProductCard({ product, onSelect, flat }: { product: Product; onS
         )}
 
         <div className="absolute left-2 top-2 flex flex-wrap gap-1">
-          {product.is_popular && <Badge variant="accent" className="text-sm">★ Popular</Badge>}
+          {product.is_popular && (
+            <Badge variant="accent" className="flex items-center gap-1 text-sm">
+              <Star className="size-3.5" fill="currentColor" aria-hidden /> Popular
+            </Badge>
+          )}
           {product.is_new && <Badge variant="primary" className="text-sm">New</Badge>}
         </div>
 
@@ -48,19 +52,21 @@ export function ProductCard({ product, onSelect, flat }: { product: Product; onS
         {product.description && (
           <p className="line-clamp-2 text-sm font-medium leading-snug text-[hsl(var(--muted-foreground))]">{product.description}</p>
         )}
-        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-          <div>
-            <span className="font-display text-4xl font-bold leading-none text-[hsl(var(--primary))]">{money(product.base_price)}</span>
+        {/* flex-wrap so on a 375px 2-col grid the + button drops to its own line
+            instead of overflowing / crushing the price. */}
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-x-2 gap-y-3 pt-3">
+          <div className="min-w-0">
+            <span className="font-display text-3xl font-bold leading-none tabular-nums text-[hsl(var(--primary))] sm:text-4xl">{money(product.base_price)}</span>
             <span className="mt-1.5 flex items-center gap-1 text-sm font-semibold text-[hsl(var(--muted-foreground))]">
-              <Clock className="size-4" aria-hidden /> {product.prep_time_minutes} min
+              <Clock className="size-4 shrink-0" aria-hidden /> {product.prep_time_minutes} min
             </span>
           </div>
           {!soldOut && (
             <span
               aria-hidden
-              className="sketch-shadow-primary grid size-14 shrink-0 place-items-center rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-transform duration-200 group-hover:scale-110 group-hover:rotate-90"
+              className="sketch-shadow-primary ml-auto grid size-12 shrink-0 place-items-center rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-transform duration-200 group-hover:rotate-90 group-hover:scale-110 sm:size-14"
             >
-              <Plus className="size-7" strokeWidth={3} />
+              <Plus className="size-6 sm:size-7" strokeWidth={3} />
             </span>
           )}
         </div>

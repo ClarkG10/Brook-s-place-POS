@@ -7,27 +7,35 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /** Log in with either a username or an email address. */
     public function login(Request $request): JsonResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $data = $request->validate([
+            // `login` is the identifier (username OR email). `email` kept for back-compat.
+            'login' => ['required_without:email', 'string'],
+            'email' => ['required_without:login', 'string'],
             'password' => ['required', 'string'],
             'device_name' => ['nullable', 'string'],
         ]);
 
-        $user = User::where('email', $credentials['email'])->first();
+        $identifier = trim($data['login'] ?? $data['email']);
 
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+        $user = User::where('email', $identifier)
+            ->orWhere('username', $identifier)
+            ->first();
+
+        if (! $user || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['These credentials do not match our records.'],
+                'login' => ['These credentials do not match our records.'],
             ]);
         }
 
-        $token = $user->createToken($credentials['device_name'] ?? 'admin-portal')->plainTextToken;
+        $token = $user->createToken($data['device_name'] ?? 'admin-portal')->plainTextToken;
 
         return response()->json([
             'token' => $token,
@@ -38,6 +46,43 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return response()->json(['user' => $this->userPayload($request->user())]);
+    }
+
+    /** Any authenticated user may update their own name / email / username. */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->id)],
+        ]);
+
+        $user->update($data);
+
+        return response()->json(['user' => $this->userPayload($user->fresh())]);
+    }
+
+    /** Any authenticated user may change their own password (current one required). */
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if (! Hash::check($data['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Your current password is incorrect.'],
+            ]);
+        }
+
+        $user->update(['password' => $data['password']]); // 'hashed' cast handles hashing
+
+        return response()->json(['message' => 'Password updated.']);
     }
 
     public function logout(Request $request): JsonResponse
@@ -53,7 +98,9 @@ class AuthController extends Controller
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'username' => $user->username,
             'role' => $user->role,
+            'is_owner' => $user->isOwner(),
         ];
     }
 }

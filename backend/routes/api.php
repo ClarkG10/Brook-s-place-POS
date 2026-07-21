@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\ProductController;
 use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\UploadController;
+use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InventoryController;
@@ -33,6 +34,10 @@ Route::post('auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
+
+    // Self-service — any authenticated user manages their own account.
+    Route::put('auth/profile', [AuthController::class, 'updateProfile']);
+    Route::put('auth/password', [AuthController::class, 'updatePassword']);
 });
 
 /*
@@ -47,8 +52,18 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::get('reports/sales', [ReportController::class, 'sales']);
     Route::get('reports/sales/export', [ReportController::class, 'export']);
 
+    // All staff can read settings (shop name, theme, currency drive the admin shell);
+    // only the owner may change them.
     Route::get('settings', [SettingsController::class, 'show']);
-    Route::put('settings', [SettingsController::class, 'update']);
+    Route::put('settings', [SettingsController::class, 'update'])->middleware('role:owner');
+
+    // Staff account management — owner only.
+    Route::middleware('role:owner')->group(function () {
+        Route::get('users', [UserController::class, 'index']);
+        Route::post('users', [UserController::class, 'store']);
+        Route::put('users/{user}', [UserController::class, 'update']);
+        Route::delete('users/{user}', [UserController::class, 'destroy']);
+    });
 
     Route::get('orders', [OrderController::class, 'index']);
     Route::post('orders', [OrderController::class, 'store']);

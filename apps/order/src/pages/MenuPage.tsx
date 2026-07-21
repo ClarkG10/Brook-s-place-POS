@@ -82,8 +82,17 @@ export function MenuPage() {
 
       <main className="flex-1 px-4">
         {isPending && (
-          <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="wobble aspect-[3/4] w-full" />)}
+          <div className="grid grid-cols-2 gap-3 pt-3 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="wobble border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                <Skeleton className="wobble-2 m-2 aspect-square" />
+                <div className="space-y-2 px-4 pb-4">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="mt-2 h-8 w-1/2" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

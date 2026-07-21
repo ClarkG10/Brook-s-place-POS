@@ -37,6 +37,18 @@ export interface Palette {
   tokens: Record<string, string>;
 }
 
+export type StaffRole = 'owner' | 'manager' | 'cashier' | 'barista';
+
+export interface StaffUser {
+  id: number;
+  name: string;
+  email: string;
+  username: string;
+  role: StaffRole;
+  is_owner: boolean;
+  created_at: string;
+}
+
 export interface AdminSettings {
   shop_name: string;
   tagline: string | null;
@@ -220,13 +232,28 @@ export interface PosOrderPayload {
 }
 
 export const api = {
-  login: (email: string, password: string) =>
+  // `login` accepts either a username or an email address.
+  login: (login: string, password: string) =>
     request<{ token: string; user: AdminUser }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password, device_name: 'admin-portal' }),
+      body: JSON.stringify({ login, password, device_name: 'admin-portal' }),
     }),
   me: () => request<{ user: AdminUser }>('/auth/me'),
   logout: () => request<{ message: string }>('/auth/logout', { method: 'POST' }),
+
+  // Self-service account
+  updateProfile: (payload: { name: string; email: string; username: string }) =>
+    request<{ user: AdminUser }>('/auth/profile', { method: 'PUT', body: JSON.stringify(payload) }).then((r) => r.user),
+  updatePassword: (payload: { current_password: string; password: string; password_confirmation: string }) =>
+    request<{ message: string }>('/auth/password', { method: 'PUT', body: JSON.stringify(payload) }),
+
+  // Staff management (owner only)
+  users: () => request<{ data: StaffUser[] }>('/admin/users').then((r) => r.data),
+  createUser: (u: Record<string, unknown>) =>
+    request<{ data: StaffUser }>('/admin/users', { method: 'POST', body: JSON.stringify(u) }).then((r) => r.data),
+  updateUser: (id: number, u: Record<string, unknown>) =>
+    request<{ data: StaffUser }>(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(u) }).then((r) => r.data),
+  deleteUser: (id: number) => request<{ message: string }>(`/admin/users/${id}`, { method: 'DELETE' }),
 
   dashboard: () => request<DashboardSummary>('/admin/dashboard'),
   settings: () => request<AdminSettings>('/admin/settings'),

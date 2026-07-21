@@ -66,6 +66,7 @@ cd $FORGE_RELEASE_DIRECTORY/backend
 
 $FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 $FORGE_PHP artisan migrate --force
+$FORGE_PHP artisan app:create-owner --if-missing --no-interaction
 $FORGE_PHP artisan storage:link
 $FORGE_PHP artisan optimize
 
@@ -73,6 +74,8 @@ $ACTIVATE_RELEASE()
 
 $RESTART_QUEUES()
 ```
+
+- **`app:create-owner --if-missing --no-interaction`** runs right after `migrate`: it ensures the store settings row and, **only if no owner exists yet**, bootstraps the first owner from `OWNER_EMAIL` / `OWNER_USERNAME` / `OWNER_PASSWORD` (set these in the Forge env). `--if-missing` means later deploys skip it, so a password the owner changes in-app is never overwritten; run non-interactively with no `OWNER_*` env it simply skips (never hangs or fails the deploy). Omit these env vars and it's a harmless no-op — create the owner manually per §1.8 instead.
 
 - **`cd $FORGE_RELEASE_DIRECTORY/backend`** — `$FORGE_RELEASE_DIRECTORY` is the repo root; the Laravel app is in `backend/` (fixes *"could not find a composer.json file in …/releases/NNN"*).
 - **Do NOT add `ln -nsf ../.env .env`.** With **Root directory = `/backend`**, Forge already links the real env at `backend/.env`. A bridge symlink overwrites it with a broken link → Laravel can't read `.env` → falls back to the framework default `DB_CONNECTION=sqlite`, silently migrating into a throwaway `database/database.sqlite` instead of MySQL.
@@ -102,15 +105,21 @@ Forge → **Scheduler**:
 - **Frequency:** Every minute.
 
 ### 1.8 First run (one time)
-SSH in, then create the store settings row + a real owner account (do **not** use the demo seeders' `password` in production):
+SSH in and create the store settings row + a real owner account (do **not** use the demo seeders' `password` in production). **Preferred:** the idempotent artisan command — no tinker, safe to re-run (also resets the password):
 
 ```bash
 cd /home/forge/api.brooks.place/backend
 php artisan migrate --force
-php artisan tinker
->>> \App\Models\Setting::current();  // creates the settings row (name defaults to "Brook's Place")
->>> \App\Models\User::create(['name'=>'Owner','email'=>'owner@yourshop.com','role'=>'owner','password'=>bcrypt('CHANGE-ME-strong')]);
+php artisan app:create-owner --email=you@yourshop.com --username=owner --password='CHANGE-ME-strong'
+# Or run it with no flags to be prompted (the password input is hidden):
+#   php artisan app:create-owner
+# Or set OWNER_EMAIL / OWNER_USERNAME / OWNER_PASSWORD in the Forge env and run it flagless.
 ```
+
+Owners log into the admin app with **either** their username or email. Roles: `owner` (full access incl. settings + staff management), `manager`/`cashier`/`barista` (operations only). Owners can create the rest of the team from the admin **Staff** page.
+
+> Avoid `php artisan tinker` + `User::create([... 'password' => bcrypt(...)])` — the model casts `password => 'hashed'`, so it **auto-hashes**; wrapping in `bcrypt()` double-hashes it and login silently fails. Pass the plaintext password (the command above does this correctly).
+
 Optionally seed a starter menu/inventory: `php artisan db:seed --class=Database\\Seeders\\MenuSeeder` (and `InventorySeeder`), or just build it in the admin UI.
 
 ---

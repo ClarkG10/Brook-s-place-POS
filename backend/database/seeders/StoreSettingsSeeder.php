@@ -27,16 +27,16 @@ class StoreSettingsSeeder extends Seeder
 
         // Staff accounts for the management portal.
         $staff = [
-            ['name' => 'Store Owner', 'email' => 'owner@brooks.place', 'role' => 'owner'],
-            ['name' => 'Store Manager', 'email' => 'manager@brooks.place', 'role' => 'manager'],
-            ['name' => 'Cashier', 'email' => 'cashier@brooks.place', 'role' => 'cashier'],
-            ['name' => 'Barista', 'email' => 'barista@brooks.place', 'role' => 'barista'],
+            ['name' => 'Store Owner', 'email' => 'owner@brooks.place', 'username' => 'owner', 'role' => 'owner'],
+            ['name' => 'Store Manager', 'email' => 'manager@brooks.place', 'username' => 'manager', 'role' => 'manager'],
+            ['name' => 'Cashier', 'email' => 'cashier@brooks.place', 'username' => 'cashier', 'role' => 'cashier'],
+            ['name' => 'Barista', 'email' => 'barista@brooks.place', 'username' => 'barista', 'role' => 'barista'],
         ];
 
         foreach ($staff as $s) {
             User::query()->updateOrCreate(
                 ['email' => $s['email']],
-                ['name' => $s['name'], 'role' => $s['role'], 'password' => Hash::make('password')],
+                ['name' => $s['name'], 'username' => $s['username'], 'role' => $s['role'], 'password' => Hash::make('password')],
             );
         }
     }

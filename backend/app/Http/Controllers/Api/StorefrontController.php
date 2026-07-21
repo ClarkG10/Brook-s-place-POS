@@ -72,7 +72,7 @@ class StorefrontController extends Controller
     /** Waiting-screen polling: minimal public view of one order. */
     public function orderStatus(string $orderNumber): JsonResponse
     {
-        $order = Order::with('items')->where('order_number', $orderNumber)->firstOrFail();
+        $order = Order::with('items.product')->where('order_number', $orderNumber)->firstOrFail();
 
         return response()->json([
             'order_number' => $order->order_number,
@@ -82,7 +82,11 @@ class StorefrontController extends Controller
             'placed_at' => $order->placed_at,
             'items' => $order->items->map(fn ($i) => [
                 'product_name' => $i->product_name,
+                // Product may have been deleted since the order was placed — image is best-effort.
+                'image_url' => $i->product?->image_url,
                 'quantity' => $i->quantity,
+                'unit_price' => (float) $i->unit_price,
+                'line_total' => (float) $i->line_total,
                 'options' => collect($i->options ?? [])->pluck('name'),
                 'notes' => $i->notes,
             ]),

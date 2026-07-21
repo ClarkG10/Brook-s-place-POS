@@ -6,7 +6,9 @@ export interface AdminUser {
   id: number;
   name: string;
   email: string;
+  username: string;
   role: string;
+  is_owner: boolean;
 }
 
 interface AuthState {

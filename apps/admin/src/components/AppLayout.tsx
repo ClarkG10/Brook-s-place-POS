@@ -1,24 +1,36 @@
 import { applyTheme } from '@brooks/ui';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Boxes, ClipboardList, Coffee, LayoutDashboard, LogOut, Settings as SettingsIcon, ShoppingCart, UtensilsCrossed } from 'lucide-react';
+import { BarChart3, Boxes, ClipboardList, Coffee, LayoutDashboard, LogOut, Settings as SettingsIcon, ShoppingCart, UserCog, UtensilsCrossed, Users } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
-const NAV = [
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  end: boolean;
+  ownerOnly?: boolean;
+}
+
+const NAV: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/pos', label: 'POS', icon: ShoppingCart, end: false },
   { to: '/orders', label: 'Orders', icon: ClipboardList, end: false },
   { to: '/products', label: 'Products', icon: UtensilsCrossed, end: false },
   { to: '/inventory', label: 'Inventory', icon: Boxes, end: false },
   { to: '/sales', label: 'Sales', icon: BarChart3, end: false },
-  { to: '/settings', label: 'Settings', icon: SettingsIcon, end: false },
+  { to: '/account', label: 'Account', icon: UserCog, end: false },
+  { to: '/staff', label: 'Staff', icon: Users, end: false, ownerOnly: true },
+  { to: '/settings', label: 'Settings', icon: SettingsIcon, end: false, ownerOnly: true },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, setUser, clear } = useAuth();
   const navigate = useNavigate();
+  // Owner-only items stay hidden until we know the role (avoids a flash for staff).
+  const nav = NAV.filter((item) => !item.ownerOnly || user?.is_owner);
 
   // Validate the token and load the current user.
   const me = useQuery({ queryKey: ['me'], queryFn: api.me });
@@ -66,7 +78,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           )}
           <span className="truncate font-display text-sm font-bold text-[hsl(var(--foreground))]">{shopName}</span>
         </div>
-        <NavLinks />
+        <NavLinks items={nav} />
         <div className="mt-auto border-t border-[hsl(var(--border))] pt-3">
           <div className="mb-2 px-2 text-xs">
             <p className="truncate font-medium text-[hsl(var(--foreground))]">{user?.name ?? '—'}</p>
@@ -88,7 +100,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
         {/* Bottom nav (mobile) */}
         <nav className="no-scrollbar fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] py-2 md:hidden">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
+          {nav.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -109,10 +121,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
   );
 }
 
-function NavLinks() {
+function NavLinks({ items }: { items: NavItem[] }) {
   return (
     <nav className="flex flex-col gap-1">
-      {NAV.map(({ to, label, icon: Icon, end }) => (
+      {items.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}

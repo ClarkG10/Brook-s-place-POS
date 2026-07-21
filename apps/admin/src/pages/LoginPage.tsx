@@ -8,7 +8,7 @@ import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
 const schema = z.object({
-  email: z.string().email('Enter a valid email'),
+  login: z.string().min(1, 'Enter your username or email'),
   password: z.string().min(1, 'Password is required'),
 });
 type FormValues = z.infer<typeof schema>;
@@ -22,11 +22,11 @@ export function LoginPage() {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: 'onBlur',
-    defaultValues: { email: '', password: '' },
+    defaultValues: { login: '', password: '' },
   });
 
   const login = useMutation({
-    mutationFn: (v: FormValues) => api.login(v.email, v.password),
+    mutationFn: (v: FormValues) => api.login(v.login, v.password),
     onSuccess: ({ token, user }) => setSession(token, user),
   });
 
@@ -51,9 +51,9 @@ export function LoginPage() {
           noValidate
         >
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" autoComplete="username" aria-invalid={!!errors.email} {...register('email')} />
-            {errors.email && <p className="text-xs text-[hsl(var(--danger))]">{errors.email.message}</p>}
+            <Label htmlFor="login">Username or email</Label>
+            <Input id="login" type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} aria-invalid={!!errors.login} {...register('login')} />
+            {errors.login && <p className="text-xs text-[hsl(var(--danger))]">{errors.login.message}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -79,7 +79,7 @@ export function LoginPage() {
           </Button>
 
           <p className="text-center text-xs text-[hsl(var(--muted-foreground))]">
-            Demo: owner@brooks.place / password
+            Demo: <span className="font-semibold">owner</span> (or owner@brooks.place) / password
           </p>
         </form>
       </div>

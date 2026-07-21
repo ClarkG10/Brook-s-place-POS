@@ -1,6 +1,6 @@
 import { Button } from '@brooks/ui';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, Minus, Plus, X } from 'lucide-react';
+import { Check, GlassWater, Minus, Plus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { money } from '../lib/format';
 import type { OptionGroup, Product, ProductOption } from '../lib/types';
@@ -98,13 +98,24 @@ function Sheet({ product, onClose }: { product: Product; onClose: () => void }) 
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
           >
             <X className="size-5" aria-hidden />
           </button>
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto p-5">
+          {/* Product hero */}
+          <div className="wobble-2 relative aspect-[5/3] w-full overflow-hidden">
+            {product.image_url ? (
+              <img src={product.image_url} alt="" className="size-full object-cover" />
+            ) : (
+              <div className="grid size-full place-items-center" style={{ background: 'linear-gradient(135deg, hsl(var(--primary) / 0.14), hsl(var(--accent) / 0.12))' }}>
+                <GlassWater className="size-16 text-[hsl(var(--primary))]/55" aria-hidden />
+              </div>
+            )}
+          </div>
+
           {product.option_groups.map((group) => {
             const invalid = showErrors && missing.some((m) => m.id === group.id);
             return (
@@ -175,19 +186,19 @@ function Sheet({ product, onClose }: { product: Product; onClose: () => void }) 
               type="button"
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               aria-label="Decrease quantity"
-              className="grid size-9 cursor-pointer place-items-center rounded-full text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] disabled:opacity-40"
+              className="grid size-11 cursor-pointer place-items-center rounded-full text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] disabled:opacity-40"
               disabled={qty <= 1}
             >
-              <Minus className="size-4" aria-hidden />
+              <Minus className="size-5" aria-hidden />
             </button>
             <span className="w-8 text-center font-display font-semibold tabular-nums">{qty}</span>
             <button
               type="button"
               onClick={() => setQty((q) => Math.min(99, q + 1))}
               aria-label="Increase quantity"
-              className="grid size-9 cursor-pointer place-items-center rounded-full text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+              className="grid size-11 cursor-pointer place-items-center rounded-full text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
             >
-              <Plus className="size-4" aria-hidden />
+              <Plus className="size-5" aria-hidden />
             </button>
           </div>
           <Button className="flex-1" size="lg" onClick={addToCart}>
