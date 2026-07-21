@@ -5,6 +5,7 @@ import { CartBar } from '../components/CartBar';
 import { CustomizeSheet } from '../components/CustomizeSheet';
 import { ProductCard } from '../components/ProductCard';
 import { useMenu, useSettings } from '../hooks/queries';
+import { CategoryIcon } from '../lib/categoryIcon';
 import type { Product } from '../lib/types';
 import { useCart } from '../store/cart';
 
@@ -19,9 +20,16 @@ export function MenuPage() {
   const { data: settings } = useSettings();
   const { data: categories, isPending, isError, refetch } = useMenu();
   const table = useCart((s) => s.table);
+  const addLine = useCart((s) => s.addLine);
   const [activeCat, setActiveCat] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [customizing, setCustomizing] = useState<Product | null>(null);
+
+  // Items with options open the customize sheet; simple items add in one tap.
+  const handleSelect = (p: Product) => {
+    if (p.option_groups.length === 0) addLine(p, [], '', 1);
+    else setCustomizing(p);
+  };
 
   const allProducts = useMemo(() => categories?.flatMap((c) => c.products) ?? [], [categories]);
   const popular = useMemo(() => allProducts.filter((p) => p.is_popular && !p.is_sold_out).slice(0, 8), [allProducts]);
@@ -96,7 +104,7 @@ export function MenuPage() {
               <EmptyState icon={Search} title="Nothing found" description="Try a different drink or snack." />
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {searchResults.map((p) => <ProductCard key={p.id} product={p} onSelect={setCustomizing} />)}
+                {searchResults.map((p) => <ProductCard key={p.id} product={p} onSelect={handleSelect} />)}
               </div>
             )}
           </section>
@@ -113,7 +121,7 @@ export function MenuPage() {
                 <div className="no-scrollbar -mx-4 flex snap-x items-stretch gap-4 overflow-x-auto px-4 py-2">
                   {popular.map((p) => (
                     <div key={p.id} className="w-56 shrink-0 snap-start sm:w-60">
-                      <ProductCard product={p} onSelect={setCustomizing} flat />
+                      <ProductCard product={p} onSelect={handleSelect} flat />
                     </div>
                   ))}
                 </div>
@@ -129,12 +137,13 @@ export function MenuPage() {
                     key={cat.id}
                     type="button"
                     onClick={() => setActiveCat(cat.id)}
-                    className={`shrink-0 cursor-pointer rounded-full border-2 px-4 py-2 text-sm font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
+                    className={`flex shrink-0 cursor-pointer items-center gap-2 rounded-full border-2 px-4 py-2 text-base font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
                       active
                         ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]'
                         : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--foreground))] hover:border-[hsl(var(--primary))]/40'
                     }`}
                   >
+                    <CategoryIcon name={cat.icon} className="size-[1.1em]" />
                     {cat.name}
                   </button>
                 );
@@ -148,7 +157,7 @@ export function MenuPage() {
                   <EmptyState icon={CupSoda} title="Nothing here yet" description="Check another category." />
                 ) : (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {current.products.map((p) => <ProductCard key={p.id} product={p} onSelect={setCustomizing} />)}
+                    {current.products.map((p) => <ProductCard key={p.id} product={p} onSelect={handleSelect} />)}
                   </div>
                 )}
               </section>

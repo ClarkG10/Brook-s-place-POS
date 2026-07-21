@@ -26,9 +26,15 @@ export function CartBar() {
             onClick={() => navigate('/cart')}
           >
             <span className="inline-flex items-center gap-2">
-              <span className="grid size-6 place-items-center rounded-full bg-white/20 text-xs font-bold tabular-nums">
+              <motion.span
+                key={count}
+                initial={{ scale: 1.5 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                className="grid size-7 place-items-center rounded-full bg-white/25 text-sm font-bold tabular-nums"
+              >
                 {count}
-              </span>
+              </motion.span>
               View Cart
             </span>
             <span className="inline-flex items-center gap-2 tabular-nums">
